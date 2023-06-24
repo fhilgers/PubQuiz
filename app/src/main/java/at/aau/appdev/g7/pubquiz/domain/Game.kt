@@ -48,6 +48,9 @@ class Game (
         connectivityProvider.onReceiveData = this::onReceiveData
     }
 
+    private fun identifyPlayer(message: GameMessage) : Player {
+        return players[message.name] ?: throw ProtocolException("Invalid player: ${message.name}")
+    }
     private fun onReceiveData(message: GameMessage) {
         when (message.type) {
             GameMessageType.PLAYER_JOIN -> {
@@ -65,9 +68,7 @@ class Game (
                         onGameStarting.invoke()
                     }
                     MASTER -> {
-                        if (!players.containsKey(message.name))
-                            throw ProtocolException("Invalid player")
-                        players[message.name]!!.ready = true
+                        identifyPlayer(message).ready = true
                         if (players.all { it.value.ready }) {
                             phase = READY
                         }
@@ -99,9 +100,7 @@ class Game (
             }
             GameMessageType.ANSWER -> {
                 expect(MASTER, QUESTION_ACTIVE, "question answer")
-                if (!players.containsKey(message.name))
-                    throw ProtocolException("Invalid player")
-                players[message.name]!!.answered = true
+                identifyPlayer(message).answered = true
                 if (players.all { it.value.answered }) {
                     phase = QUESTION_ANSWERED
                 }
@@ -109,7 +108,7 @@ class Game (
             }
             GameMessageType.SUBMIT_ROUND -> {
                 expectRole(MASTER, "submit round")
-
+                identifyPlayer(message).answersPerRound.add(message.answers!!)
             }
             // TODO
             else -> {}
