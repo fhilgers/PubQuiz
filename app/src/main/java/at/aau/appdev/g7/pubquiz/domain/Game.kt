@@ -5,26 +5,116 @@ import at.aau.appdev.g7.pubquiz.domain.GamePhase.*
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProtocol
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
+import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolException
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolMessage
 
 class Game (
     val userRole: UserRole,
-    val connectivityProvider: ConnectivityProvider,
+    val connectivityProvider: ConnectivityProvider<GameMessage>,
     val dataProvider: DataProvider
     ) {
-    private lateinit var rounds: List<Round>
-    private var phase = INIT
+    private lateinit var rounds: MutableList<Round>
+    var phase = INIT
+        private set
 
     lateinit var playerName: String
 
-    var currentRoundIdx = -1
-    var currentQuestionIdx = -1
+    val players = mutableMapOf<String,Player>()
 
-    // Master events
-    var onPlayerJoined: () -> Unit = {}
+    private var currentRoundIdx = -1
+    private var currentQuestionIdx = -1
 
-    // Player events
+    val currentRound: Round
+        get() = rounds[currentRoundIdx]
+    val currentQuestion: Question
+        get() = rounds[currentRoundIdx].questions[currentQuestionIdx]
 
+    // Master UI events
+    var onPlayerJoined: (player: String) -> Unit = {}
+    var onPlayerLeft: (player: String) -> Unit = {}
+    var onPlayerReady: (player: String) -> Unit = {}
+    var onPlayerAnswer: (player: String) -> Unit = {}
+    var onPlayerSubmitRound: (player: String) -> Unit = {}
+
+    // Player UI events
+    var onGameStarting: () -> Unit = {}
+    var onNewRoundStart: () -> Unit = {}
+    var onNewQuestion: () -> Unit = {}
+    var onRoundEnd: () -> Unit = {}
+    var onGameOver: () -> Unit = {}
+
+    init {
+        connectivityProvider.protocol = GameProtocol()
+        connectivityProvider.onReceiveData = this::onReceiveData
+    }
+
+    private fun onReceiveData(message: GameMessage) {
+        when (message.type) {
+            GameMessageType.PLAYER_JOIN -> {
+                expect(MASTER, CREATED, "on player joined")
+                val name = message.name ?: throw ProtocolException("Player name is required")
+                if (players.containsKey(name)) {
+                    throw ProtocolException("Player name is already used")
+                }
+                players[name] = Player(name)
+                onPlayerJoined.invoke(name)
+            }
+            GameMessageType.PLAYER_READY -> {
+                when (userRole) {
+                    PLAYER -> {
+                        onGameStarting.invoke()
+                    }
+                    MASTER -> {
+                        if (!players.containsKey(message.name))
+                            throw ProtocolException("Invalid player")
+                        players[message.name]!!.ready = true
+                        if (players.all { it.value.ready }) {
+                            phase = READY
+                        }
+                    }
+                }
+            }
+            GameMessageType.ROUND_START -> {
+                //expect(PLAYER, READY, "on round start")
+                if (phase == READY) {
+                    // first round
+                    rounds = mutableListOf()
+                }
+                phase = ROUND_STARTED
+                currentRoundIdx++
+                currentQuestionIdx = -1
+                rounds.add(currentRoundIdx, Round(currentRoundIdx, message.name))
+                onNewRoundStart.invoke()
+            }
+            GameMessageType.ROUND_END -> {
+                onRoundEnd.invoke()
+            }
+            GameMessageType.QUESTION -> {
+                // TODO expect(PLAYER, )
+                phase = QUESTION_ACTIVE
+                currentQuestionIdx++
+                currentRound.questions.add(Question(currentQuestionIdx, message.name, message.answers!!))
+                currentRound.answers.add("")
+                onNewQuestion.invoke()
+            }
+            GameMessageType.ANSWER -> {
+                expect(MASTER, QUESTION_ACTIVE, "question answer")
+                if (!players.containsKey(message.name))
+                    throw ProtocolException("Invalid player")
+                players[message.name]!!.answered = true
+                if (players.all { it.value.answered }) {
+                    phase = QUESTION_ANSWERED
+                }
+                onPlayerAnswer.invoke(message.name!!)
+            }
+            GameMessageType.SUBMIT_ROUND -> {
+                expectRole(MASTER, "submit round")
+
+            }
+            // TODO
+            else -> {}
+        }
+    }
 
     /**
      * 1. As a Master, I can set up a new pub quiz session
@@ -38,9 +128,9 @@ class Game (
                 val answers = 'A'.rangeTo('A'.plus(answersPerQuestion - 1))
                     .map { a -> "$a" }.toList()
                 Question(q, "Question $q", answers)
-            }.toList()
-            Round(r, questions)
-        }.toList()
+            }.toMutableList()
+            Round(r, "Round $r", questions)
+        }.toMutableList()
         phase = SETUP
     }
 
@@ -55,7 +145,7 @@ class Game (
         phase = CREATED
     }
 
-    fun start() {
+    fun startGame() {
         expectRole(MASTER, "start game")
         expectPhase(CREATED, "start game")
 
@@ -90,7 +180,7 @@ class Game (
     }
 
     fun readyPlayer() {
-        expect(PLAYER, CREATED, "ready player")
+        expect(PLAYER, STARTING, "ready player")
 
         connectivityProvider.sendData(GameMessage(GameMessageType.PLAYER_READY, playerName))
 
@@ -101,10 +191,10 @@ class Game (
         expect(MASTER, READY, "start round")
 
         currentRoundIdx++
-        if (currentRoundIdx == 0) {
-            currentQuestionIdx = -1
-        }
+        currentQuestionIdx = -1
+
         val currentRound = rounds[currentRoundIdx]
+
         val roundName = "Round ${currentRound.index}"
         connectivityProvider.sendData(GameMessage(GameMessageType.ROUND_START, roundName))
 
@@ -112,7 +202,8 @@ class Game (
     }
 
     fun endRound() {
-        expect(MASTER, ROUND_STARTED, "end round")
+        expectRole(MASTER, "end round")
+        // TODO check phase
 
         connectivityProvider.sendData(GameMessage(GameMessageType.ROUND_END))
 
@@ -137,11 +228,20 @@ class Game (
     fun answerQuestion(answer: String) {
         expect(PLAYER, QUESTION_ACTIVE, "answer question")
 
+        rounds[currentRoundIdx].answers[currentQuestionIdx] = answer
+
+        connectivityProvider.sendData(GameMessage(GameMessageType.ANSWER, playerName))
+
         phase = QUESTION_ANSWERED
     }
 
     fun submitRoundAnswers() {
         expect(PLAYER, QUESTION_ANSWERED, "submit round answers")
+
+        connectivityProvider.sendData(GameMessage(
+            GameMessageType.SUBMIT_ROUND,
+            playerName,
+            rounds[currentRoundIdx].answers))
 
         phase = ROUND_ENDED
     }
@@ -150,9 +250,21 @@ class Game (
      * 13. As a Master, I can see same screen as a player and select the correct answer
      */
     fun selectCorrectAnswer(answer: String) {
-        expect(MASTER, QUESTION_ACTIVE, "select correct answer")
+        expectRole(MASTER, "select correct answer")
+        // TODO check phase
+
+        rounds[currentRoundIdx].answers[currentQuestionIdx] = answer
 
         // phase is not changed!
+    }
+
+    /**
+     * 18. As a Master, I can trigger end of the game
+     */
+    fun endGame() {
+        expect(MASTER, ROUND_ENDED, "end game")
+        connectivityProvider.sendData(GameMessage(GameMessageType.GAME_OVER))
+        phase = END
     }
 
     private fun expect(role: UserRole, phase: GamePhase, action: String = "") {
@@ -182,7 +294,8 @@ enum class GamePhase {
     ROUND_STARTED,
     ROUND_ENDED,
     QUESTION_ACTIVE,
-    QUESTION_ANSWERED
+    QUESTION_ANSWERED,
+    END
 }
 
 class GameMessage(val type: GameMessageType,
@@ -197,23 +310,55 @@ enum class GameMessageType {
     ROUND_START,
     ROUND_END,
     QUESTION,
-    ANSWER
+    ANSWER,
+    SUBMIT_ROUND,
+    GAME_OVER
 }
 
-class GameProtocol: ConnectivityProtocol {
-    override fun serialize(data: ProtocolMessage): String {
-        TODO("Not yet implemented")
+class GameProtocol: ConnectivityProtocol<GameMessage> {
+    companion object {
+        val SEPARATOR = ';'
+    }
+    override fun serialize(data: GameMessage): String {
+        var s = data.type.toString() + SEPARATOR + data.name
+        data.answers?.forEach { s += SEPARATOR + it }
+        return s
     }
 
-    override fun deserialize(data: String): ProtocolMessage {
-        TODO("Not yet implemented")
+    override fun deserialize(data: String): GameMessage {
+        val elements = data.split(SEPARATOR)
+        return when(val type = GameMessageType.valueOf(elements[0])) {
+            GameMessageType.PLAYER_JOIN -> GameMessage(type, elements[1])
+            GameMessageType.PLAYER_READY -> GameMessage(type, if (elements.size > 1) elements[1] else null)
+            GameMessageType.ROUND_START -> GameMessage(type, elements[1])
+            GameMessageType.ROUND_END -> GameMessage(type, elements[1])
+            GameMessageType.QUESTION -> GameMessage(type, elements[1], elements.subList(2, elements.size))
+            GameMessageType.ANSWER -> GameMessage(type, elements[1])
+            GameMessageType.SUBMIT_ROUND -> GameMessage(type, elements[1], elements.subList(2, elements.size))
+
+            else -> GameMessage(
+                type = type,
+                name = if (elements.size > 1) elements[1] else null,
+                answers = if (elements.size > 2) elements.subList(2, elements.size) else null
+            )
+        }
     }
 }
 
-data class Round(val index: Int, val questions: List<Question>) {
-
+data class Round(
+    val index: Int,
+    val name: String?,
+    val questions: MutableList<Question> = mutableListOf()
+) {
+    val answers = MutableList(questions.size) { "" }
 }
 
 data class Question(val index: Int, val text: String?, val answers: List<String>) {
 
+}
+
+data class Player(val name: String) {
+    val answersPerRound: MutableList<List<String>> = mutableListOf()
+    var ready: Boolean = false
+    var answered: Boolean = false
 }
