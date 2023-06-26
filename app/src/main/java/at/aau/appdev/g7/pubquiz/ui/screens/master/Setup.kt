@@ -141,7 +141,7 @@ fun MasterSetup(
                     value = timePerQuestion,
                     onValueChange = { timePerQuestion = it },
                     valueText = "${timePerQuestion.roundToInt()}s",
-                    valueRange = 30f..120f,
+                    valueRange = 5f..120f,
                     modifier = Modifier.padding(vertical = 16.dp, horizontal = 32.dp)
                 )
 

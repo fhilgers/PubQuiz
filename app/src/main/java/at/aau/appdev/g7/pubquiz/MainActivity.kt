@@ -30,10 +30,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import at.aau.appdev.g7.pubquiz.ui.screens.master.GameConfiguration
+import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
+import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterLobby
+import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterQuestionsScreen
+import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterRoundsScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterSetup
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterStart
 import at.aau.appdev.g7.pubquiz.ui.screens.master.Player
+import at.aau.appdev.g7.pubquiz.ui.screens.master.PlayerAnswer
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavAction
@@ -74,7 +79,19 @@ sealed class MasterDestination : Parcelable {
     data class Setup(val index: Int? = null) : MasterDestination()
 
     @Parcelize
-    object Lobby : MasterDestination()
+    data class Lobby(val gameIndex: Int) : MasterDestination()
+
+    @Parcelize
+    data class Rounds(val gameIndex: Int) : MasterDestination()
+
+    @Parcelize
+    data class Questions(val gameIndex: Int) : MasterDestination()
+
+    @Parcelize
+    data class Answers(val gameIndex: Int) : MasterDestination()
+
+    @Parcelize
+    data class AnswerTimer(val gameIndex: Int) : MasterDestination()
 }
 
 sealed class PlayerDestination : Parcelable {
@@ -211,11 +228,52 @@ fun MasterScreen(
         mutableStateOf(listOf<GameConfiguration>())
     }
     val players =
-        listOf(Player("Hans Mueller", false), Player("Manfred Emmerich", true))
+        listOf(
+            Player("Hans Mueller", false),
+            Player("Manfred Emmerich", true),
+            Player("Emma Donaubauer", true),
+            Player("Emil Mustermann", false),
+        )
+
+    val basePlayerAnswers = players.map {
+        PlayerAnswer(it.name, null)
+    }
+
+    val makeAnswers: (tick: Int) -> List<PlayerAnswer> = {tick ->
+        if (tick == 2) {
+            basePlayerAnswers.toMutableList().also {
+                it[0].answer = 0
+            }
+        } else if (tick <= 3 ) {
+             basePlayerAnswers.toMutableList().also {
+                it[0].answer = 1
+                it[1].answer = 0
+                it[2].answer = 1
+            }
+        } else if (tick <= 4) {
+            basePlayerAnswers.toMutableList().also {
+                it[0].answer = 1
+                it[1].answer = 0
+                it[2].answer = 2
+                it[3].answer = 1
+            }
+        } else {
+            basePlayerAnswers
+        }
+    }
 
     val masterController = rememberNavController<MasterDestination>(
         startDestination = MasterDestination.Start
     )
+
+    var currentRound by remember {
+        mutableStateOf(0)
+    }
+
+    var currentQuestion by remember {
+        mutableStateOf(0)
+    }
+
     NavBackHandler(controller = masterController)
 
     AnimatedNavHost(masterController, transitionSpec = customTransitionSpec) { destination ->
@@ -231,7 +289,7 @@ fun MasterScreen(
                         list.removeAt(it)
                     }
                 }, onHost = {
-                    masterController.navigate(MasterDestination.Lobby)
+                    masterController.navigate(MasterDestination.Lobby(it))
                 })
             }
 
@@ -271,8 +329,76 @@ fun MasterScreen(
                     onClose = {
                         masterController.popUpTo { it == MasterDestination.Start }
                     },
-                    onStart = {}
+                    onStart = {
+                        masterController.navigate(MasterDestination.Rounds(destination.gameIndex))
+                    }
                 )
+            }
+
+            is MasterDestination.Rounds -> {
+                showBottomNavigation(false)
+
+                val numberOfRounds = configuredGames[destination.gameIndex].numberOfRounds
+
+                MasterRoundsScreen(numberOfRounds = numberOfRounds, nextRound = currentRound, onNextRoundStart = {
+                        masterController.navigate(MasterDestination.Questions(destination.gameIndex))
+
+                })
+            }
+
+            is MasterDestination.Questions -> {
+                showBottomNavigation(false)
+
+
+
+                val numberOfQuestions = configuredGames[destination.gameIndex].numberOfQuestions
+
+                MasterQuestionsScreen(numberOfQuestions = numberOfQuestions, nextQuestion = currentQuestion, onNextQuestionStart = {
+                        masterController.navigate(MasterDestination.Answers(destination.gameIndex))
+                })
+            }
+
+            is MasterDestination.Answers -> {
+                showBottomNavigation(false)
+
+                val numberOfAnswers = configuredGames[destination.gameIndex].numberOfAnswers
+
+                MasterAnswersScreen(numberOfAnswers = numberOfAnswers, onRightAnswerSelect = {
+                    masterController.navigate(MasterDestination.AnswerTimer(destination.gameIndex))
+                })
+            }
+
+            is MasterDestination.AnswerTimer -> {
+                showBottomNavigation(false)
+
+                var ticks by remember {
+                    mutableStateOf(0)
+                }
+                val time = configuredGames[destination.gameIndex].timePerQuestion
+                var timerStarted by remember {
+                    mutableStateOf(false)
+                }
+                MasterAnswerTimerScreen(
+                    maxTicks = time,
+                    ticks = ticks,
+                    playerAnswers = makeAnswers(ticks),
+                    onTick = {
+                        ticks++
+                        if (ticks == time) {
+                            if (currentRound == configuredGames[destination.gameIndex].numberOfRounds - 1) {
+                                masterController.popUpTo { it == MasterDestination.Start }
+                                // TODO game finished
+                            } else if (currentQuestion == configuredGames[destination.gameIndex].numberOfQuestions - 1) {
+                                currentQuestion = 0
+                                currentRound++
+                                masterController.popUpTo { it == MasterDestination.Rounds(destination.gameIndex) }
+                            } else {
+                                currentQuestion++
+                                masterController.popUpTo { it == MasterDestination.Questions(destination.gameIndex) }
+                            }
+                        } },
+                    timerStarted = timerStarted,
+                    onStartTimer = { timerStarted= true }, onPauseTimer = { timerStarted = false})
             }
         }
     }

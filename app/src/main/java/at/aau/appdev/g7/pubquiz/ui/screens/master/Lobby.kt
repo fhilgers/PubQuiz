@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -140,11 +141,10 @@ fun MasterLobby(
                 }
             })
         },
+        floatingActionButtonPosition = FabPosition.End,
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { showStartDialog = true },
-                containerColor = BottomAppBarDefaults.bottomAppBarFabColor,
-                elevation = FloatingActionButtonDefaults.bottomAppBarFabElevation()
             ) {
                 Text(text = "Start Game")
             }
@@ -193,7 +193,7 @@ fun PlayerListItem(
     modifier: Modifier = Modifier,
 ) {
     ListItem(
-        headlineText = {
+        headlineContent = {
             Text(
                 text = name,
                 style = style,
