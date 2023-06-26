@@ -229,10 +229,10 @@ fun MasterScreen(
     }
     val players =
         listOf(
-            Player("Hans Mueller", false),
-            Player("Manfred Emmerich", true),
-            Player("Emma Donaubauer", true),
-            Player("Emil Mustermann", false),
+            Player("Team Rocket", false),
+            Player("Team Star", true),
+            Player("Team Magma", true),
+            Player("Team Flare", false),
         )
 
     val basePlayerAnswers = players.map {

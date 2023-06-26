@@ -37,7 +37,8 @@ fun PlayerAvatar(
             val name = nickname.uppercase()
             Color("$name".toHslColor())
         }
-        val initials = nickname.take(1).uppercase()
+        // TODO revert me
+        val initials = "${nickname.take(1)}${nickname[5]}".uppercase()
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(SolidColor(color))
         }
