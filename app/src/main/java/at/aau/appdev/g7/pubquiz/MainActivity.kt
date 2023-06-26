@@ -240,7 +240,9 @@ fun MasterScreen(
     }
 
     val makeAnswers: (tick: Int) -> List<PlayerAnswer> = {tick ->
-        if (tick == 2) {
+        if (tick <= 1) {
+            basePlayerAnswers
+        } else if (tick <= 2) {
             basePlayerAnswers.toMutableList().also {
                 it[0].answer = 0
             }
@@ -250,15 +252,13 @@ fun MasterScreen(
                 it[1].answer = 0
                 it[2].answer = 1
             }
-        } else if (tick <= 4) {
+        } else {
             basePlayerAnswers.toMutableList().also {
                 it[0].answer = 1
                 it[1].answer = 0
                 it[2].answer = 2
                 it[3].answer = 1
             }
-        } else {
-            basePlayerAnswers
         }
     }
 
