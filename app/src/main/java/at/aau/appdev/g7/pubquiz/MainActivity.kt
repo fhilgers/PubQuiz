@@ -364,7 +364,7 @@ fun MasterScreen(
                     game.onPlayerSubmitRound = { p ->
                         playerAnswers = playerAnswers.map { item ->
                             if (item.from == p) {
-                                item.copy(answered = false)
+                                item.copy(answered = true)
                             } else {
                                 item
                             }
@@ -474,6 +474,7 @@ fun MasterScreen(
                 }
 
                 MasterAnswerTimerScreen(
+                    title = game.currentQuestion.text ?: "Question ${game.currentQuestion.index}",
                     maxTicks = time,
                     ticks = ticks,
                     playerAnswers = playerAnswers,
@@ -510,6 +511,7 @@ fun MasterScreen(
                 }
 
                 MasterAnswerTimerScreen(
+                    title = game.currentRound.name ?: "Round ${game.currentRound.index}",
                     maxTicks = timeout,
                     ticks = ticks,
                     playerAnswers = playerAnswers,

@@ -62,6 +62,7 @@ data class PlayerAnswer(val from: String, val answered: Boolean = false)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MasterAnswerTimerScreen(
+    title: String,
     maxTicks: Int,
     ticks: Int,
     playerAnswers: List<PlayerAnswer>,
@@ -71,7 +72,7 @@ fun MasterAnswerTimerScreen(
     onPauseTimer: () -> Unit,
     onSkipTimer: () -> Unit,
 ) {
-    Log.d(TAG,"MasterAnswerTimerScreen(playerAnswers: $playerAnswers)")
+//    Log.d(TAG,"MasterAnswerTimerScreen(playerAnswers: $playerAnswers)")
 
     HandleUnimplementedBackNavigation()
 
@@ -83,7 +84,7 @@ fun MasterAnswerTimerScreen(
             }
         }
     }
-    val title = if (timerStarted) "Timer running" else "Timer stopped"
+    val titleSuffix = if (timerStarted) "Timer running" else "Timer stopped"
     Scaffold(
         floatingActionButtonPosition = FabPosition.End,
         floatingActionButton = {
@@ -104,18 +105,20 @@ fun MasterAnswerTimerScreen(
             }
         },
         topBar = {
-            TopAppBar(title = {
-                AnimatedContent(targetState = title, label = "") {
-                    Text(text = it)
+            TopAppBar(
+                title = {
+                    AnimatedContent(targetState = "$title: $titleSuffix", label = "") {
+                        Text(text = it)
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        //showCloseDialog = true
+                    }) {
+                        Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Exit Waiting Screen")
+                    }
                 }
-
-                              }, navigationIcon = {
-                IconButton(onClick = {
-                    //showCloseDialog = true
-                }) {
-                    Icon(imageVector = Icons.Filled.ArrowBack, contentDescription = "Exit Waiting Screen")
-                }
-            })
+            )
         }
     ) { paddingValues ->
         Column(
@@ -201,7 +204,9 @@ fun MasterAnswerTimerScreenPreview() {
     }
     val maxTicks = 15
     PubQuizTheme {
-        MasterAnswerTimerScreen(timerStarted = timerStarted,
+        MasterAnswerTimerScreen(
+            title = "Question 1",
+            timerStarted = timerStarted,
             onStartTimer = { timerStarted = true },
             onPauseTimer = { timerStarted = false },
             onSkipTimer = { ticks = maxTicks },
