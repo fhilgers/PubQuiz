@@ -75,6 +75,8 @@ class GameTest {
     fun simpleSimulation() {
         // 1
         master.setupGame(2, 3, 4)
+        assertEquals(2, master.roundNames.size)
+
         master.createGame()
 
         // 4
@@ -94,30 +96,39 @@ class GameTest {
         // 7
         assertTrue(master.players.all { it.value.ready })
 
-        //8
-        master.startNextRound()
+        while(master.hasNextRound) {
+            //8
+            master.startNextRound()
+            assertEquals(3, master.currentRound.questions.size)
+            assertEquals("Question 1", master.currentRound.questions[0].text)
+            assertEquals("Question 2", master.currentRound.questions[1].text)
+            assertEquals("Question 3", master.currentRound.questions[2].text)
 
-        //9
-        assertTrue(players.all { it.phase == GamePhase.ROUND_STARTED })
+            //9
+            assertTrue(players.all { it.phase == GamePhase.ROUND_STARTED })
 
-        // 10
-        master.startNextQuestion()
+            while(master.hasNextQuestion) {
+                // 10
+                master.startNextQuestion()
 
-        // 11
-        assertTrue(players.all { it.phase == GamePhase.QUESTION_ACTIVE })
+                // 11
+                assertTrue(players.all { it.phase == GamePhase.QUESTION_ACTIVE })
+                assertEquals(GamePhase.QUESTION_ACTIVE, master.phase)
 
-        // 12
-        players.forEach { p -> p.answerQuestion(p.currentQuestion.answers.random()) }
+                // 12
+                players.forEach { p -> p.answerQuestion(p.currentQuestion.answers.random()) }
 
-        //13
-        master.selectCorrectAnswer(master.currentQuestion.answers.random())
-        // TODO master.players.forEach { i,p -> p }
+                //13
+                master.selectCorrectAnswer(master.currentQuestion.answers.random())
+                // TODO master.players.forEach { i,p -> p }
+            }
 
-        // 14
-        master.endRound()
+            // 14
+            master.endRound()
 
-        // 16
-        players.forEach { p -> p.submitRoundAnswers() }
+            // 16
+            players.forEach { p -> p.submitRoundAnswers() }
+        }
 
         // 17
 

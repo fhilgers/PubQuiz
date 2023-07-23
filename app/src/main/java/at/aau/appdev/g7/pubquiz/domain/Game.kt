@@ -7,6 +7,7 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolException
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolMessage
+import java.util.EnumSet
 
 class Game (
     val userRole: UserRole,
@@ -21,13 +22,25 @@ class Game (
 
     val players = mutableMapOf<String,Player>()
 
-    private var currentRoundIdx = -1
-    private var currentQuestionIdx = -1
+    var currentRoundIdx = -1
+        private set
+    var currentQuestionIdx = -1
+        private set
+
+    val numberOfRounds: Int
+        get() = rounds.size
+    val roundNames: List<String>
+        get() = rounds.map { it.name ?: "Round ${it.index}" }
 
     val currentRound: Round
         get() = rounds[currentRoundIdx]
     val currentQuestion: Question
         get() = rounds[currentRoundIdx].questions[currentQuestionIdx]
+
+    val hasNextRound: Boolean
+        get() = currentRoundIdx < rounds.size - 1
+    val hasNextQuestion: Boolean
+        get() = currentQuestionIdx < currentRound.questions.size - 1
 
     // Master UI events
     var onPlayerJoined: (player: String) -> Unit = {}
@@ -60,7 +73,7 @@ class Game (
                     throw ProtocolException("Player name is already used")
                 }
                 players[name] = Player(name)
-                onPlayerJoined.invoke(name)
+                onPlayerJoined(name)
             }
             GameMessageType.PLAYER_READY -> {
                 when (userRole) {
@@ -68,7 +81,9 @@ class Game (
                         onGameStarting.invoke()
                     }
                     MASTER -> {
-                        identifyPlayer(message).ready = true
+                        val player = identifyPlayer(message)
+                        player.ready = true
+                        onPlayerReady(player.name)
                         if (players.all { it.value.ready }) {
                             phase = READY
                         }
@@ -109,6 +124,7 @@ class Game (
             GameMessageType.SUBMIT_ROUND -> {
                 expectRole(MASTER, "submit round")
                 identifyPlayer(message).answersPerRound.add(message.answers!!)
+                onPlayerSubmitRound.invoke(message.name!!)
             }
             // TODO
             else -> {}
@@ -153,6 +169,13 @@ class Game (
         phase = STARTING
     }
 
+    fun forceStartGame() {
+        expectRole(MASTER, "force start game")
+        if (phase == STARTING) {
+            phase = READY
+        }
+    }
+
     /**
      * 3. As a Player, I can search for a new game and join it.
      */
@@ -187,7 +210,7 @@ class Game (
     }
 
     fun startNextRound() {
-        expect(MASTER, READY, "start round")
+        expect(MASTER, anyOf(READY, ROUND_ENDED), "start round")
 
         currentRoundIdx++
         currentQuestionIdx = -1
@@ -210,12 +233,12 @@ class Game (
     }
 
     fun startNextQuestion() {
-        expect(MASTER, ROUND_STARTED, "start question")
+        expect(MASTER, anyOf(ROUND_STARTED, QUESTION_ANSWERED), "start next question")
 
         currentQuestionIdx++
-        val currentRound = rounds[currentRoundIdx]
-        val question = currentRound.questions[currentRoundIdx]
+        val question = currentQuestion
 
+        players.forEach { it.value.answered = false }
         connectivityProvider.sendData(GameMessage(GameMessageType.QUESTION, question.text, question.answers))
 
         phase = QUESTION_ACTIVE
@@ -271,6 +294,11 @@ class Game (
         expectPhase(phase, action)
     }
 
+    private fun expect(role: UserRole, phases: EnumSet<GamePhase>, action: String = "") {
+        expectRole(role, action)
+        expectPhase(phases, action)
+    }
+
     private fun expectRole(role: UserRole, action: String) {
         if (userRole != role) {
             throw IllegalStateException("Illegal role ($userRole) to $action")
@@ -281,6 +309,18 @@ class Game (
         if (phase != expectedPhase) {
             throw IllegalStateException("Invalid game phase ($phase) to $action")
         }
+    }
+
+    private fun expectPhase(expectedPhases: EnumSet<GamePhase>, action: String) {
+        if (!expectedPhases.contains(phase)) {
+            throw IllegalStateException("Invalid game phase ($phase) to proceed with $action")
+        }
+    }
+
+    private fun anyOf(vararg phases: GamePhase) : EnumSet<GamePhase> {
+        val set = EnumSet.noneOf(GamePhase::class.java)
+        phases.forEach { set.add(it) }
+        return set
     }
 }
 
@@ -297,11 +337,10 @@ enum class GamePhase {
     END
 }
 
-class GameMessage(val type: GameMessageType,
-                  val name: String? = null,
-                  val answers: List<String>? = null) : ProtocolMessage {
-
-}
+data class GameMessage(
+    val type: GameMessageType,
+    val name: String? = null,
+    val answers: List<String>? = null) : ProtocolMessage
 
 enum class GameMessageType {
     PLAYER_JOIN,

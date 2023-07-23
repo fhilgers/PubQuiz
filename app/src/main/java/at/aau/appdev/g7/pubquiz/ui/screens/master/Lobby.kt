@@ -53,6 +53,7 @@ fun MasterLobby(
     players: List<Player>,
     password: String,
     onClose: () -> Unit,
+    onReady: () -> Unit,
     onStart: () -> Unit,
 ) {
     var showCloseDialog by remember {
@@ -60,6 +61,10 @@ fun MasterLobby(
     }
 
     var showStartDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var readinessRequested by remember {
         mutableStateOf(false)
     }
 
@@ -143,10 +148,21 @@ fun MasterLobby(
         },
         floatingActionButtonPosition = FabPosition.End,
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showStartDialog = true },
-            ) {
-                Text(text = "Start Game")
+            if (readinessRequested) {
+                ExtendedFloatingActionButton(
+                    onClick = { showStartDialog = true },
+                ) {
+                    Text(text = "Start Game")
+                }
+            } else {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        onReady()
+                        readinessRequested = true
+                    }
+                ) {
+                    Text(text = "Players, get ready!")
+                }
             }
         },
     ) { paddingValues ->
@@ -222,6 +238,7 @@ fun LobbyPreview() {
             players = players,
             password = "456048",
             onClose = {},
+            onReady = {},
             onStart = {}
         )
     }
