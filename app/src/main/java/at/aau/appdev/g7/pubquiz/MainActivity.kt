@@ -1,5 +1,6 @@
 package at.aau.appdev.g7.pubquiz
 
+import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.util.Log
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,9 +37,11 @@ import androidx.compose.ui.Modifier
 import at.aau.appdev.g7.pubquiz.demo.MasterDemoConnectivitySimulator
 import at.aau.appdev.g7.pubquiz.domain.Game
 import at.aau.appdev.g7.pubquiz.domain.GameMessage
+import at.aau.appdev.g7.pubquiz.domain.NearbyConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.UserRole
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
+import at.aau.appdev.g7.pubquiz.domain.nearbyProviderPermissions
 import at.aau.appdev.g7.pubquiz.ui.screens.master.GameConfiguration
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
@@ -48,6 +53,10 @@ import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterStart
 import at.aau.appdev.g7.pubquiz.ui.screens.master.Player
 import at.aau.appdev.g7.pubquiz.ui.screens.master.PlayerAnswer
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.rememberPermissionState
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavAction
 import dev.olshevski.navigation.reimagined.NavBackHandler
@@ -61,13 +70,16 @@ import dev.olshevski.navigation.reimagined.rememberNavController
 import kotlinx.parcelize.Parcelize
 
 const val TAG = "PubQuiz"
-const val DEMO_MODE = true
+
+// Set false to test Nearby Connectivity
+const val DEMO_MODE = false
 
 class MainActivity : ComponentActivity() {
     lateinit var connectivityProvider: ConnectivityProvider<GameMessage>
     lateinit var dataProvider: DataProvider
     lateinit var game: Game
 
+    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -78,14 +90,26 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavHostScreen(onUserRoleChosen = {
-                        // TODO replace these provider stubs with real ones as soon as they are implemented
-                        connectivityProvider = /*if (DEMO_MODE)*/ MasterDemoConnectivitySimulator() /* else real provider */
-                        dataProvider = object: DataProvider {}
-                        game = Game(it, connectivityProvider, dataProvider)
-                        Log.i(TAG, "MainActivity: game created: ${game.phase}")
-                        game
-                    })
+
+                    val permissions = rememberMultiplePermissionsState(permissions = nearbyProviderPermissions)
+
+                    if (permissions.allPermissionsGranted) {
+                        NavHostScreen(onUserRoleChosen = {
+                            // TODO replace these provider stubs with real ones as soon as they are implemented
+                            connectivityProvider = if (DEMO_MODE) MasterDemoConnectivitySimulator() else NearbyConnectivityProvider(this)
+                            dataProvider = object: DataProvider {}
+                            game = Game(it, connectivityProvider, dataProvider)
+                            Log.i(TAG, "MainActivity: game created: ${game.phase}")
+                            game
+                        })
+                    } else {
+                        Button(onClick = { permissions.launchMultiplePermissionRequest()}) {
+                            Text("Grant permissions")
+                        }
+
+                    }
+
+
                 }
             }
         }
@@ -181,10 +205,6 @@ private fun NavController<BottomDestination>.moveLastEntryToStart() {
 }
 
 
-@OptIn(
-    ExperimentalAnimationApi::class, ExperimentalAnimationApi::class,
-    ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class
-)
 @Composable
 fun NavHostScreen(
     onUserRoleChosen: (UserRole) -> Game
@@ -202,8 +222,13 @@ fun NavHostScreen(
         mutableStateOf(true)
     }
 
-    var game: Game? by remember {
-        mutableStateOf(null)
+    val game by remember {
+        derivedStateOf {
+            when (navController.backstack.entries.last().destination) {
+                BottomDestination.Player -> onUserRoleChosen(UserRole.PLAYER)
+                BottomDestination.Master -> onUserRoleChosen(UserRole.MASTER)
+            }
+        }
     }
 
     Scaffold(
@@ -216,11 +241,9 @@ fun NavHostScreen(
                         NavigationBarItem(
                             selected = destination == lastDestination,
                             onClick = {
-                                if (!navController.moveToTop { it == destination }) {
-                                    game = onUserRoleChosen.invoke(when (destination) {
-                                        BottomDestination.Player -> UserRole.PLAYER
-                                        BottomDestination.Master -> UserRole.MASTER
-                                    })
+                                if (!navController.moveToTop {
+                                        it == destination
+                                }) {
                                     navController.navigate(destination)
                                 }
 
@@ -242,11 +265,17 @@ fun NavHostScreen(
                 when (destination) {
                     BottomDestination.Player -> {
                         showBottomNavigation = true
+
+                        Button(onClick = {
+                            game.searchGame()
+                        }) {
+                            Text("Connect")
+                        }
                     }
 
                     BottomDestination.Master -> {
                         MasterScreen(
-                            game = game!!,
+                            game = game,
                             showBottomNavigation = {
                                 showBottomNavigation = it
                             })
@@ -257,7 +286,6 @@ fun NavHostScreen(
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun MasterScreen(
     game: Game,
