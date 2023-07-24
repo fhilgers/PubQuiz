@@ -25,9 +25,10 @@ import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MasterQuestionsScreen(
-        numberOfQuestions: Int,
-        nextQuestion: Int,
-        onNextQuestionStart: () -> Unit,
+    //numberOfQuestions: Int,
+    questions: List<String>,
+    nextQuestion: Int,
+    onNextQuestionStart: () -> Unit,
 ) {
     HandleUnimplementedBackNavigation()
 
@@ -43,14 +44,14 @@ fun MasterQuestionsScreen(
                 }
             },
         topBar = {
-            TopAppBar(title = { Text(text = "Question $nextQuestion") })
+            TopAppBar(title = { Text(text = questions[nextQuestion]) })
         }
     ) { paddingValues ->
         LazyColumn(
                 contentPadding = PaddingValues(16.dp),
                 modifier = Modifier.padding(paddingValues)
         ) {
-            items(numberOfQuestions) {
+            items(questions.size) {
                 Card(
                         modifier = Modifier.padding(vertical = 10.dp),
                         colors = if (it == nextQuestion) selectedCardColors else CardDefaults.cardColors()
@@ -62,7 +63,7 @@ fun MasterQuestionsScreen(
                                 .fillMaxWidth()
                                 .padding(32.dp)
                     ) {
-                        Text(text = "Question $it", style = MaterialTheme.typography.headlineSmall)
+                        Text(text = questions[it], style = MaterialTheme.typography.headlineSmall)
                     }
                 }
             }
@@ -74,6 +75,7 @@ fun MasterQuestionsScreen(
 @Composable
 fun MasterQuestionsScreenPreview() {
     PubQuizTheme {
-        MasterQuestionsScreen(5, nextQuestion = 1, onNextQuestionStart = {})
+        MasterQuestionsScreen(listOf("Question 1", "Question 2", "Question 3"),
+            nextQuestion = 1, onNextQuestionStart = {})
     }
 }

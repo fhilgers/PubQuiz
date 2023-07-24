@@ -25,9 +25,11 @@ import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MasterRoundsScreen(
-        numberOfRounds: Int,
-        nextRound: Int,
-        onNextRoundStart: () -> Unit,
+        //numberOfRounds: Int,
+        //nextRound: Int,
+    roundNames: List<String>,
+    nextRoundName: String,
+    onNextRoundStart: () -> Unit,
 ) {
     HandleUnimplementedBackNavigation()
     val selectedCardColors = CardDefaults.cardColors(
@@ -42,17 +44,18 @@ fun MasterRoundsScreen(
                 }
             },
         topBar = {
-            TopAppBar(title = { Text(text = "Round $nextRound") })
+            TopAppBar(title = { Text(text = nextRoundName) })
         }
     ) { paddingValues ->
         LazyColumn(
                 contentPadding = PaddingValues(16.dp),
                 modifier = Modifier.padding(paddingValues)
         ) {
-            items(numberOfRounds) {
+            items(roundNames.size) {
+                val name = roundNames[it]
                 Card(
                         modifier = Modifier.padding(vertical = 10.dp),
-                        colors = if (it == nextRound) selectedCardColors else CardDefaults.cardColors()
+                        colors = if (name == nextRoundName) selectedCardColors else CardDefaults.cardColors()
                 )
                 {
                     Row(
@@ -61,7 +64,7 @@ fun MasterRoundsScreen(
                                     .fillMaxWidth()
                                     .padding(32.dp)
                     ) {
-                        Text(text = "Round $it", style = MaterialTheme.typography.headlineSmall)
+                        Text(text = name, style = MaterialTheme.typography.headlineSmall)
                     }
                 }
             }
@@ -73,6 +76,6 @@ fun MasterRoundsScreen(
 @Composable
 fun MasterRoundsScreenPreview() {
     PubQuizTheme {
-        MasterRoundsScreen(5, nextRound = 1, onNextRoundStart = {})
+        MasterRoundsScreen(listOf("Round 1", "Round 2", "Round 3"), nextRoundName = "Round 2", onNextRoundStart = {})
     }
 }

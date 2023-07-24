@@ -40,11 +40,12 @@ import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun MasterAnswersScreen(
-    numberOfAnswers: Int,
-    onRightAnswerSelect: (Int) -> Unit,
+    //numberOfAnswers: Int,
+    answers: List<String>,
+    onRightAnswerSelect: (String) -> Unit,
 ) {
     var checkedAnswer by remember {
-        mutableStateOf(-1)
+        mutableStateOf("")
     }
 
     HandleUnimplementedBackNavigation()
@@ -52,7 +53,7 @@ fun MasterAnswersScreen(
     Scaffold(
         floatingActionButtonPosition = FabPosition.End,
         floatingActionButton = {
-            AnimatedVisibility(visible = checkedAnswer != -1, enter = scaleIn(), exit = scaleOut()) {
+            AnimatedVisibility(visible = checkedAnswer != "", enter = scaleIn(), exit = scaleOut()) {
                 ExtendedFloatingActionButton(onClick = { onRightAnswerSelect(checkedAnswer) }) {
                     Text(text = "Select Question")
                 }
@@ -75,10 +76,11 @@ fun MasterAnswersScreen(
             LazyColumn(
                 contentPadding = PaddingValues(16.dp),
             ) {
-                items(numberOfAnswers) { index ->
+                items(answers.size) { index ->
+                    val answer = answers[index]
                     Card(
                         modifier = Modifier.padding(vertical = 10.dp),
-                        onClick = { checkedAnswer = index },
+                        onClick = { checkedAnswer = answer },
                     )
                     {
                         Row(
@@ -89,11 +91,11 @@ fun MasterAnswersScreen(
                                 .padding(32.dp)
                         ) {
                             Text(
-                                text = "Answer $index",
+                                text = answer,
                                 style = MaterialTheme.typography.headlineSmall
                             )
                             Checkbox(
-                                checked = checkedAnswer == index,
+                                checked = checkedAnswer == answer,
                                 onCheckedChange = { },
                                 enabled = false
                             )
@@ -109,6 +111,6 @@ fun MasterAnswersScreen(
 @Composable
 fun MasterAnswersScreenPreview() {
     PubQuizTheme {
-        MasterAnswersScreen(5, onRightAnswerSelect = {})
+        MasterAnswersScreen(listOf("A", "B", "C", "D"), onRightAnswerSelect = {})
     }
 }
