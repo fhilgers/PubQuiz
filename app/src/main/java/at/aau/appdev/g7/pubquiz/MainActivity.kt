@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.with
@@ -146,9 +147,9 @@ val BottomDestination.icon
 @OptIn(ExperimentalAnimationApi::class)
 val customTransitionSpec = NavTransitionSpec<Any?> { action: NavAction, _, _ ->
     val direction = if (action == NavAction.Pop) {
-        AnimatedContentScope.SlideDirection.End
+        AnimatedContentTransitionScope.SlideDirection.End
     } else {
-        AnimatedContentScope.SlideDirection.Start
+        AnimatedContentTransitionScope.SlideDirection.Start
     }
     slideIntoContainer(direction).with(slideOutOfContainer(direction))
 }
