@@ -60,6 +60,8 @@ class NearbyConnectivityProvider<T: ProtocolMessage>(val context: Context): Conn
     override lateinit var protocol: ConnectivityProtocol<T>
     override lateinit var onReceiveData: (data: T) -> Unit
 
+    private val connectionsClient = Nearby.getConnectionsClient(context)
+
     private val providerID = UUID.randomUUID().toString()
     private val endpoints = mutableSetOf<String>()
 
@@ -121,7 +123,7 @@ class NearbyConnectivityProvider<T: ProtocolMessage>(val context: Context): Conn
     private val endpointDiscoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
             Log.d(TAG, "onEndpointFound: $endpointId, $info")
-            Nearby.getConnectionsClient(context).requestConnection(
+            connectionsClient.requestConnection(
                 providerID,
                 endpointId,
                 connectionLifecycleCallback
@@ -141,7 +143,7 @@ class NearbyConnectivityProvider<T: ProtocolMessage>(val context: Context): Conn
 
         val discoveryOptions = DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
 
-        Nearby.getConnectionsClient(context).startDiscovery(
+        connectionsClient.startDiscovery(
             SERVICE_ID,
             endpointDiscoveryCallback,
             discoveryOptions
@@ -154,7 +156,7 @@ class NearbyConnectivityProvider<T: ProtocolMessage>(val context: Context): Conn
 
     override fun sendData(data: T) {
         endpoints.forEach { endpointId ->
-            Nearby.getConnectionsClient(context).sendPayload(endpointId, Payload.fromBytes(protocol.serialize(data).toByteArray()))
+            connectionsClient.sendPayload(endpointId, Payload.fromBytes(protocol.serialize(data).toByteArray()))
         }
     }
 
@@ -162,7 +164,7 @@ class NearbyConnectivityProvider<T: ProtocolMessage>(val context: Context): Conn
 
         val advertisingOptions = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
 
-        Nearby.getConnectionsClient(context).startAdvertising(
+        connectionsClient.startAdvertising(
             providerID,
             SERVICE_ID,
             connectionLifecycleCallback,
