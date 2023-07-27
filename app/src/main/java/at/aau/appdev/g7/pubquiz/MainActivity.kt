@@ -198,9 +198,8 @@ fun NavHostScreen(
 
 
     val navController = rememberNavController<BottomDestination>(
-        startDestination = BottomDestination.values()[0],
+        initialBackstack = listOf()
     )
-
 
     BottomNavigationBackHandler(navController = navController)
 
@@ -216,7 +215,7 @@ fun NavHostScreen(
         bottomBar = {
             AnimatedVisibility(visible = showBottomNavigation) {
                 NavigationBar {
-                    val lastDestination = navController.backstack.entries.last().destination
+                    val lastDestination = navController.backstack.entries.lastOrNull()?.destination
 
                     BottomDestination.values().forEach { destination ->
                         NavigationBarItem(
