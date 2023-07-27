@@ -10,6 +10,7 @@ import java.util.Timer
 import java.util.TimerTask
 import kotlin.random.Random
 
+/*
 class MasterDemoConnectivitySimulator(
     val tickMs: Long = 1000L
 ) : ConnectivityProvider<GameMessage> {
@@ -95,3 +96,5 @@ class MasterDemoConnectivitySimulator(
         }
     }
 }
+
+ */

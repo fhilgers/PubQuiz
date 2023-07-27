@@ -1,13 +1,11 @@
 package at.aau.appdev.g7.pubquiz
 
-import android.os.Build
 import android.os.Bundle
 import android.os.Parcelable
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -18,7 +16,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -34,14 +31,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import at.aau.appdev.g7.pubquiz.demo.MasterDemoConnectivitySimulator
 import at.aau.appdev.g7.pubquiz.domain.Game
 import at.aau.appdev.g7.pubquiz.domain.GameMessage
-import at.aau.appdev.g7.pubquiz.domain.NearbyConnectivityProvider
+import at.aau.appdev.g7.pubquiz.providers.NearbyConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.UserRole
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
-import at.aau.appdev.g7.pubquiz.domain.nearbyProviderPermissions
+import at.aau.appdev.g7.pubquiz.providers.nearbyProviderPermissions
 import at.aau.appdev.g7.pubquiz.ui.screens.master.GameConfiguration
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
@@ -54,9 +50,7 @@ import at.aau.appdev.g7.pubquiz.ui.screens.master.Player
 import at.aau.appdev.g7.pubquiz.ui.screens.master.PlayerAnswer
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import com.google.accompanist.permissions.rememberPermissionState
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavAction
 import dev.olshevski.navigation.reimagined.NavBackHandler
@@ -96,7 +90,7 @@ class MainActivity : ComponentActivity() {
                     if (permissions.allPermissionsGranted) {
                         NavHostScreen(onUserRoleChosen = {
                             // TODO replace these provider stubs with real ones as soon as they are implemented
-                            connectivityProvider = if (DEMO_MODE) MasterDemoConnectivitySimulator() else NearbyConnectivityProvider(this)
+                            connectivityProvider = /*if (DEMO_MODE) MasterDemoConnectivitySimulator() else */NearbyConnectivityProvider(this)
                             dataProvider = object: DataProvider {}
                             game = Game(it, connectivityProvider, dataProvider)
                             Log.i(TAG, "MainActivity: game created: ${game.phase}")
