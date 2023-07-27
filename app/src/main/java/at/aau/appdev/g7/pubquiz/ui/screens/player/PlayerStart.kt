@@ -35,7 +35,10 @@ fun PlayerStart(
             verticalArrangement = Arrangement.spacedBy(40.dp, Alignment.Bottom)) {
             Text(text = "Connected to server")
 
-            TextField(value = teamName, label = { Text("Team Name") }, onValueChange = { teamName = it })
+            TextField(value = teamName,
+                singleLine = true,
+                label = { Text("Team Name") },
+                onValueChange = { teamName = it })
 
             Button(onClick = { onJoinGame(teamName) }) {
                 Text("Join Game")
