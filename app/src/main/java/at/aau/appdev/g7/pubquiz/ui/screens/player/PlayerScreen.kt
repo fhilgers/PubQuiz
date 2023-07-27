@@ -31,6 +31,9 @@ fun PlayerScreen(
     var connected by remember {
         mutableStateOf(false)
     }
+    var gameStarting by remember {
+        mutableStateOf(false)
+    }
 
     AnimatedNavHost(controller = playerController, transitionSpec = customTransitionSpec) { destination ->
         when(destination) {
@@ -44,6 +47,23 @@ fun PlayerScreen(
                     },
                     onJoinGame = { name ->
                         game.joinGameAs(name)
+
+                        game.onGameStarting = {
+                            gameStarting = true
+                        }
+                        game.onNewRoundStart = {
+
+                        }
+                        game.onNewQuestion = {
+
+                        }
+                        game.onRoundEnd = {
+
+                        }
+                        game.onGameOver = {
+
+                        }
+
                         playerController.navigate(PlayerDestination.Lobby)
                     }
                 )
@@ -51,7 +71,7 @@ fun PlayerScreen(
             is PlayerDestination.Lobby -> {
                 PlayerLobby(
                     playerName = game.playerName,
-                    gameStarting = game.phase == GamePhase.STARTING,
+                    gameStarting = gameStarting,
                     readinessConfirmed = playerReady) {
                         playerReady = true
                         game.readyPlayer()

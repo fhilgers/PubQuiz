@@ -17,22 +17,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun PlayerStart(
     connected: Boolean = false,
+    spacing: Dp = 40.dp,
     onSearchGame: () -> Unit = {},
     onJoinGame: (name:String) -> Unit = {}
 ) {
     var teamName by remember {
-        mutableStateOf<String>("")
+        mutableStateOf("")
     }
 
-    if (connected) {
-        Column(modifier = Modifier.fillMaxSize().padding(40.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(40.dp, Alignment.Bottom)) {
+    Column(modifier = Modifier.fillMaxSize().padding(spacing),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = spacedBy(spacing, Alignment.Bottom)) {
+        if (connected) {
             Text(text = "Connected to server")
 
             TextField(value = teamName,
@@ -43,9 +45,7 @@ fun PlayerStart(
             Button(onClick = { onJoinGame(teamName) }) {
                 Text("Join Game")
             }
-        }
-    } else {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        } else {
             Button(onClick = onSearchGame) {
                 Text("Search Game")
             }
