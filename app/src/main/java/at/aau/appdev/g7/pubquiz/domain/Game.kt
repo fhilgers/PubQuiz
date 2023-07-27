@@ -7,6 +7,7 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolException
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolMessage
+import java.util.Collections
 import java.util.EnumSet
 
 class Game (
@@ -19,8 +20,12 @@ class Game (
         private set
 
     lateinit var playerName: String
+    var masterId: String? = null
 
     val players = mutableMapOf<String,Player>()
+
+    val endpointIds = Collections.synchronizedSet(mutableSetOf<String>())
+    val connectedIds = Collections.synchronizedSet(mutableSetOf<String>())
 
     var currentRoundIdx = -1
         private set
@@ -50,6 +55,8 @@ class Game (
     var onPlayerSubmitRound: (player: String) -> Unit = {}
 
     // Player UI events
+    var onEndpointChange: (endpointIds: Set<String>) -> Unit = {}
+    var onGameConnected: () -> Unit = {}
     var onGameStarting: () -> Unit = {}
     var onNewRoundStart: () -> Unit = {}
     var onNewQuestion: () -> Unit = {}
@@ -58,13 +65,65 @@ class Game (
 
     init {
         connectivityProvider.protocol = GameProtocol()
+
+        connectivityProvider.onEndpointFound = this::onEndpointFound
+        connectivityProvider.onEndpointLost = this::onEndpointLost
+        connectivityProvider.onConnectionRequest = this::onConnectionRequest
+        connectivityProvider.onConnected = this::onConnected
+        connectivityProvider.onDisconnected = this::onDisconnected
+
         connectivityProvider.onReceiveData = this::onReceiveData
     }
 
-    private fun identifyPlayer(message: GameMessage) : Player {
-        return players[message.name] ?: throw ProtocolException("Invalid player: ${message.name}")
+    private fun onEndpointFound(endpointId: String) {
+        endpointIds += endpointId
+        onEndpointChange(endpointIds)
     }
-    private fun onReceiveData(message: GameMessage) {
+
+    private fun onEndpointLost(endpointId: String) {
+        endpointIds -= endpointId
+        onEndpointChange(endpointIds)
+    }
+
+    private fun onConnectionRequest(endpointId: String) {
+        // TODO manually accept connections
+        connectivityProvider.acceptConnection(endpointId)
+    }
+
+    private fun onConnected(endpointId: String) {
+        when (userRole) {
+            PLAYER -> {
+                onGameConnected()
+                masterId = endpointId
+                // TODO move this
+                phase = STARTING
+                connectivityProvider.sendData(endpointId, GameMessage(GameMessageType.PLAYER_JOIN, playerName))
+
+            }
+            MASTER -> {
+                // TODO send game state
+                connectedIds += endpointId
+            }
+        }
+    }
+
+    private fun onDisconnected(endpointId: String) {
+        when (userRole) {
+            PLAYER -> {
+                masterId = null
+            }
+            MASTER -> {
+                connectedIds -= endpointId
+            }
+        }
+
+    }
+
+    private fun identifyPlayer(endpointId: String) : Player {
+        return players[endpointId] ?: throw ProtocolException("Invalid endpointId: ${endpointId}")
+    }
+
+    private fun onReceiveData(endpointId: String, message: GameMessage) {
         when (message.type) {
             GameMessageType.PLAYER_JOIN -> {
                 expect(MASTER, CREATED, "on player joined")
@@ -72,7 +131,7 @@ class Game (
                 if (players.containsKey(name)) {
                     throw ProtocolException("Player name is already used")
                 }
-                players[name] = Player(name)
+                players[endpointId] = Player(name)
                 onPlayerJoined(name)
             }
             GameMessageType.PLAYER_READY -> {
@@ -81,12 +140,13 @@ class Game (
                         onGameStarting.invoke()
                     }
                     MASTER -> {
-                        val player = identifyPlayer(message)
+                        val player = identifyPlayer(endpointId)
                         player.ready = true
-                        onPlayerReady(player.name)
                         if (players.all { it.value.ready }) {
                             phase = READY
                         }
+
+                        onPlayerReady(player.name)
                     }
                 }
             }
@@ -115,7 +175,7 @@ class Game (
             }
             GameMessageType.ANSWER -> {
                 expect(MASTER, QUESTION_ACTIVE, "question answer")
-                identifyPlayer(message).answered = true
+                identifyPlayer(endpointId).answered = true
                 if (players.all { it.value.answered }) {
                     phase = QUESTION_ANSWERED
                 }
@@ -123,7 +183,7 @@ class Game (
             }
             GameMessageType.SUBMIT_ROUND -> {
                 expectRole(MASTER, "submit round")
-                identifyPlayer(message).answersPerRound.add(message.answers!!)
+                identifyPlayer(endpointId).answersPerRound.add(message.answers!!)
                 onPlayerSubmitRound.invoke(message.name!!)
             }
             // TODO
@@ -156,7 +216,7 @@ class Game (
         expectPhase(SETUP, "create game")
 
         // TODO advertise game, wait for players
-        connectivityProvider.advertise()
+        connectivityProvider.startAdvertising()
         phase = CREATED
     }
 
@@ -165,7 +225,10 @@ class Game (
         expectPhase(CREATED, "start game")
 
         // TODO start game, notify players, wait for readiness
-        connectivityProvider.sendData(GameMessage(GameMessageType.PLAYER_READY))
+        connectedIds.forEach {
+            connectivityProvider.sendData(it, GameMessage(GameMessageType.PLAYER_READY))
+        }
+
         phase = STARTING
     }
 
@@ -183,30 +246,33 @@ class Game (
         expectRole(PLAYER, "search game")
         expectPhase(INIT, "search game")
         // TODO search game, after game is found, join game.
-        connectivityProvider.connect()
 
         phase = CREATED
+
+        connectivityProvider.startDiscovery()
     }
 
     /**
      * 3a
      */
-    fun joinGameAs(name: String) {
+    fun joinGameAs(id: String, name: String) {
         expectRole(PLAYER, "join game")
         expectPhase(CREATED, "join game")
 
         playerName = name
-        connectivityProvider.sendData(GameMessage(GameMessageType.PLAYER_JOIN, playerName))
 
-        phase = STARTING
+        connectivityProvider.requestConnection(id)
+
+        // This is moved to the onConnected callback
+        // phase = STARTING
     }
 
     fun readyPlayer() {
         expect(PLAYER, STARTING, "ready player")
 
-        connectivityProvider.sendData(GameMessage(GameMessageType.PLAYER_READY, playerName))
-
         phase = READY
+
+        connectivityProvider.sendData(masterId!!, GameMessage(GameMessageType.PLAYER_READY))
     }
 
     fun startNextRound() {
@@ -218,7 +284,10 @@ class Game (
         val currentRound = rounds[currentRoundIdx]
 
         val roundName = "Round ${currentRound.index}"
-        connectivityProvider.sendData(GameMessage(GameMessageType.ROUND_START, roundName))
+
+        connectedIds.forEach {
+            connectivityProvider.sendData(it, GameMessage(GameMessageType.ROUND_START, roundName))
+        }
 
         phase = ROUND_STARTED
     }
@@ -227,7 +296,9 @@ class Game (
         expectRole(MASTER, "end round")
         // TODO check phase
 
-        connectivityProvider.sendData(GameMessage(GameMessageType.ROUND_END))
+        connectedIds.forEach {
+            connectivityProvider.sendData(it, GameMessage(GameMessageType.ROUND_END))
+        }
 
         phase = ROUND_ENDED
     }
@@ -239,7 +310,10 @@ class Game (
         val question = currentQuestion
 
         players.forEach { it.value.answered = false }
-        connectivityProvider.sendData(GameMessage(GameMessageType.QUESTION, question.text, question.answers))
+
+        connectedIds.forEach {
+            connectivityProvider.sendData(it, GameMessage(GameMessageType.QUESTION, question.text, question.answers))
+        }
 
         phase = QUESTION_ACTIVE
     }
@@ -252,7 +326,7 @@ class Game (
 
         rounds[currentRoundIdx].answers[currentQuestionIdx] = answer
 
-        connectivityProvider.sendData(GameMessage(GameMessageType.ANSWER, playerName))
+        connectivityProvider.sendData(masterId!!, GameMessage(GameMessageType.ANSWER, answer))
 
         phase = QUESTION_ANSWERED
     }
@@ -260,9 +334,9 @@ class Game (
     fun submitRoundAnswers() {
         expect(PLAYER, QUESTION_ANSWERED, "submit round answers")
 
-        connectivityProvider.sendData(GameMessage(
+        connectivityProvider.sendData(masterId!!, GameMessage(
             GameMessageType.SUBMIT_ROUND,
-            playerName,
+            playerName, // This can probably be removed
             rounds[currentRoundIdx].answers))
 
         phase = ROUND_ENDED
@@ -285,7 +359,11 @@ class Game (
      */
     fun endGame() {
         expect(MASTER, ROUND_ENDED, "end game")
-        connectivityProvider.sendData(GameMessage(GameMessageType.GAME_OVER))
+
+        connectedIds.forEach {
+            connectivityProvider.sendData(it, GameMessage(GameMessageType.GAME_OVER))
+        }
+
         phase = END
     }
 
