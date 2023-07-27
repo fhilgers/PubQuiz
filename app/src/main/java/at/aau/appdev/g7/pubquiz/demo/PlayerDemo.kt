@@ -35,8 +35,8 @@ class PlayerDemoConnectivitySimulator(
             }
             PLAYER_READY -> {
                 schedule(2) { simulateData(GameMessage(ROUND_START, "Round 1")) }
-                schedule(3) { simulateData(GameMessage(QUESTION, "Question 1")) }
-                schedule(5) { simulateData(GameMessage(QUESTION, "Question 2")) }
+                schedule(3) { simulateData(GameMessage(QUESTION, "Question 1", listOf("A", "B", "C", "D"))) }
+                schedule(5) { simulateData(GameMessage(QUESTION, "Question 2", listOf("A", "B", "C"))) }
                 schedule(7) { simulateData(GameMessage(ROUND_END)) }
                 // TODO maybe add more rounds
                 schedule(8) { simulateData(GameMessage(GAME_OVER)) }
