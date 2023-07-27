@@ -31,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import at.aau.appdev.g7.pubquiz.demo.MasterDemoConnectivitySimulator
+import at.aau.appdev.g7.pubquiz.demo.PlayerDemoConnectivitySimulator
 import at.aau.appdev.g7.pubquiz.domain.Game
 import at.aau.appdev.g7.pubquiz.domain.GameMessage
 import at.aau.appdev.g7.pubquiz.domain.UserRole
@@ -46,6 +47,7 @@ import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterSetup
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterStart
 import at.aau.appdev.g7.pubquiz.ui.screens.master.Player
 import at.aau.appdev.g7.pubquiz.ui.screens.master.PlayerAnswer
+import at.aau.appdev.g7.pubquiz.ui.screens.player.PlayerScreen
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavAction
@@ -79,7 +81,12 @@ class MainActivity : ComponentActivity() {
                 ) {
                     NavHostScreen(onUserRoleChosen = {
                         // TODO replace these provider stubs with real ones as soon as they are implemented
-                        connectivityProvider = /*if (DEMO_MODE)*/ MasterDemoConnectivitySimulator() /* else real provider */
+                        connectivityProvider = if (DEMO_MODE) {
+                            when(it) {
+                                UserRole.PLAYER -> PlayerDemoConnectivitySimulator()
+                                UserRole.MASTER -> MasterDemoConnectivitySimulator()
+                            }
+                        } else /* TODO replace by real provider */ MasterDemoConnectivitySimulator()
                         dataProvider = object: DataProvider {}
                         game = Game(it, connectivityProvider, dataProvider)
                         Log.i(TAG, "MainActivity: game created: ${game.phase}")
@@ -191,9 +198,8 @@ fun NavHostScreen(
 
 
     val navController = rememberNavController<BottomDestination>(
-        startDestination = BottomDestination.values()[0],
+        initialBackstack = listOf()
     )
-
 
     BottomNavigationBackHandler(navController = navController)
 
@@ -209,7 +215,7 @@ fun NavHostScreen(
         bottomBar = {
             AnimatedVisibility(visible = showBottomNavigation) {
                 NavigationBar {
-                    val lastDestination = navController.backstack.entries.last().destination
+                    val lastDestination = navController.backstack.entries.lastOrNull()?.destination
 
                     BottomDestination.values().forEach { destination ->
                         NavigationBarItem(
@@ -240,7 +246,8 @@ fun NavHostScreen(
             AnimatedNavHost(navController, transitionSpec = customTransitionSpec) { destination ->
                 when (destination) {
                     BottomDestination.Player -> {
-                        showBottomNavigation = true
+                        showBottomNavigation = false
+                        PlayerScreen(game!!)
                     }
 
                     BottomDestination.Master -> {
