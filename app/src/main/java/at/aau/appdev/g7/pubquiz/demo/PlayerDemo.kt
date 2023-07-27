@@ -2,6 +2,7 @@ package at.aau.appdev.g7.pubquiz.demo
 
 import android.util.Log
 import at.aau.appdev.g7.pubquiz.domain.GameMessage
+import at.aau.appdev.g7.pubquiz.domain.GameMessageType.*
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProtocol
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import java.util.Timer
@@ -27,7 +28,26 @@ class PlayerDemoConnectivitySimulator(
 
 
     override fun sendData(data: GameMessage) {
-        TODO("Not yet implemented")
+        Log.i(TAG, "sendData: $data")
+        when(data.type) {
+            PLAYER_JOIN -> {
+                schedule(2) { simulateData(GameMessage(PLAYER_READY)) }
+            }
+            PLAYER_READY -> {
+                schedule(2) { simulateData(GameMessage(ROUND_START, "Round 1")) }
+                schedule(3) { simulateData(GameMessage(QUESTION, "Question 1")) }
+                schedule(5) { simulateData(GameMessage(QUESTION, "Question 2")) }
+                schedule(7) { simulateData(GameMessage(ROUND_END)) }
+                // TODO maybe add more rounds
+                schedule(8) { simulateData(GameMessage(GAME_OVER)) }
+            }
+            ROUND_START -> {}
+            ROUND_END -> {}
+            QUESTION -> {}
+            ANSWER -> {}
+            SUBMIT_ROUND -> {}
+            GAME_OVER -> {}
+        }
     }
 
     private val timer = Timer()
@@ -39,5 +59,14 @@ class PlayerDemoConnectivitySimulator(
             }
         }, delay)
         return delay
+    }
+
+    private fun simulateData(data: GameMessage) {
+        Log.d(TAG, "simulateData: $data")
+        try {
+            onReceiveData(data)
+        } catch (e: Exception) {
+            Log.e(TAG, "onReceiveData: ${e.message}", e)
+        }
     }
 }
