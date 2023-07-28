@@ -15,6 +15,7 @@ import at.aau.appdev.g7.pubquiz.domain.GamePhase
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.rememberNavController
+import dev.olshevski.navigation.reimagined.replaceAll
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -34,6 +35,9 @@ fun PlayerScreen(
     var gameStarting by remember {
         mutableStateOf(false)
     }
+    var selectedAnswers by remember {
+        mutableStateOf(listOf<String>())
+    }
 
     AnimatedNavHost(controller = playerController, transitionSpec = customTransitionSpec) { destination ->
         when(destination) {
@@ -52,16 +56,17 @@ fun PlayerScreen(
                             gameStarting = true
                         }
                         game.onNewRoundStart = {
-
+                            playerController.replaceAll(PlayerDestination.RoundStart)
                         }
                         game.onNewQuestion = {
-
+                            selectedAnswers = game.currentRound.answers.toList()
+                            playerController.navigate(PlayerDestination.Question(game.currentQuestionIdx))
                         }
                         game.onRoundEnd = {
-
+                            playerController.navigate(PlayerDestination.RoundEnd)
                         }
                         game.onGameOver = {
-
+                            playerController.replaceAll(PlayerDestination.GameOver)
                         }
 
                         playerController.navigate(PlayerDestination.Lobby)
@@ -77,6 +82,29 @@ fun PlayerScreen(
                         game.readyPlayer()
                     }
             }
+
+            is PlayerDestination.RoundStart -> {
+                PlayerRoundStart(
+                    roundName = game.currentRound.name
+                )
+            }
+
+            is PlayerDestination.Question -> {
+                val index = destination.index
+                PlayerQuestions(
+                    questionText = game.currentQuestion.text,
+                    answers = game.currentQuestion.answers,
+                    selectedAnswer = selectedAnswers[index],
+                    onAnswer = { a ->
+                        game.answerQuestion(a)
+                        selectedAnswers = game.currentRound.answers.toList()
+                    }
+                )
+            }
+
+            is PlayerDestination.RoundEnd -> {}
+
+            is PlayerDestination.GameOver -> {}
         }
     }
 }

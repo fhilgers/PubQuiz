@@ -99,7 +99,7 @@ class Game (
                 phase = ROUND_STARTED
                 currentRoundIdx++
                 currentQuestionIdx = -1
-                rounds.add(currentRoundIdx, Round(currentRoundIdx, message.name))
+                rounds.add(currentRoundIdx, Round(currentRoundIdx, message.name!!))
                 onNewRoundStart.invoke()
             }
             GameMessageType.ROUND_END -> {
@@ -109,7 +109,7 @@ class Game (
                 // TODO expect(PLAYER, )
                 phase = QUESTION_ACTIVE
                 currentQuestionIdx++
-                currentRound.questions.add(Question(currentQuestionIdx, message.name, message.answers!!))
+                currentRound.questions.add(Question(currentQuestionIdx, message.name!!, message.answers!!))
                 currentRound.answers.add("")
                 onNewQuestion.invoke()
             }
@@ -385,15 +385,16 @@ class GameProtocol: ConnectivityProtocol<GameMessage> {
 
 data class Round(
     val index: Int,
-    val name: String?,
+    val name: String,
     val questions: MutableList<Question> = mutableListOf()
 ) {
     val answers = MutableList(questions.size) { "" }
 }
 
-data class Question(val index: Int, val text: String?, val answers: List<String>) {
-
-}
+data class Question(
+    val index: Int,
+    val text: String,
+    val answers: List<String>)
 
 data class Player(val name: String) {
     val answersPerRound: MutableList<List<String>> = mutableListOf()

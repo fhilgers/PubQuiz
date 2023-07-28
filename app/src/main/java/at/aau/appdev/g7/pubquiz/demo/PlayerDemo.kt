@@ -27,6 +27,10 @@ class PlayerDemoConnectivitySimulator(
     }
 
 
+    var roundIdx = 0
+    var roundsNumber = 2
+    var questionIdx = 0
+    var questionsNumber = 3
     override fun sendData(data: GameMessage) {
         Log.i(TAG, "sendData: $data")
         when(data.type) {
@@ -34,18 +38,42 @@ class PlayerDemoConnectivitySimulator(
                 schedule(2) { simulateData(GameMessage(PLAYER_READY)) }
             }
             PLAYER_READY -> {
-                schedule(2) { simulateData(GameMessage(ROUND_START, "Round 1")) }
-                schedule(3) { simulateData(GameMessage(QUESTION, "Question 1", listOf("A", "B", "C", "D"))) }
-                schedule(5) { simulateData(GameMessage(QUESTION, "Question 2", listOf("A", "B", "C"))) }
-                schedule(7) { simulateData(GameMessage(ROUND_END)) }
-                // TODO maybe add more rounds
-                schedule(8) { simulateData(GameMessage(GAME_OVER)) }
+                roundIdx = 1
+                schedule(2) { simulateData(GameMessage(ROUND_START, "Round $roundIdx")) }
+                questionIdx = 1
+                schedule(3) { simulateData(GameMessage(QUESTION, "Question $questionIdx", listOf("A", "B", "C", "D"))) }
+
             }
             ROUND_START -> {}
             ROUND_END -> {}
             QUESTION -> {}
-            ANSWER -> {}
-            SUBMIT_ROUND -> {}
+            ANSWER -> {
+                questionIdx++
+                if (questionIdx > questionsNumber) {
+                    questionIdx = 1
+                    schedule(3) { simulateData(GameMessage(ROUND_END)) }
+                } else {
+                    schedule(2) {
+                        simulateData(
+                            GameMessage(
+                                QUESTION,
+                                "Question questionIdx",
+                                listOf("A", "B", "C", "D")
+                            )
+                        )
+                    }
+                }
+            }
+            SUBMIT_ROUND -> {
+                roundIdx++
+                if (roundIdx > roundsNumber) {
+                    schedule(3) { simulateData(GameMessage(GAME_OVER)) }
+                } else {
+                    schedule(3) { simulateData(GameMessage(ROUND_START, "Round $roundIdx")) }
+                    questionIdx = 1
+                    schedule(4) { simulateData(GameMessage(QUESTION, "Question $questionIdx", listOf("A", "B", "C", "D"))) }
+                }
+            }
             GAME_OVER -> {}
         }
     }
