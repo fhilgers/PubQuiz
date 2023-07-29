@@ -30,7 +30,7 @@ class Game (
     val numberOfRounds: Int
         get() = rounds.size
     val roundNames: List<String>
-        get() = rounds.map { it.name ?: "Round ${it.index}" }
+        get() = rounds.map { it.name }
 
     val currentRound: Round
         get() = rounds[currentRoundIdx]
@@ -126,8 +126,10 @@ class Game (
                 identifyPlayer(message).answersPerRound.add(message.answers!!)
                 onPlayerSubmitRound.invoke(message.name!!)
             }
-            // TODO
-            else -> {}
+            GameMessageType.GAME_OVER -> {
+                phase = END
+                onGameOver.invoke()
+            }
         }
     }
 
@@ -246,15 +248,26 @@ class Game (
 
     /**
      * 12. As a Player, I can select the answer for current question
+     * @param answer Answer to the target question
+     * @param questionIndex Index of the target question. If not specified, current question is assumed.
      */
-    fun answerQuestion(answer: String) {
-        expect(PLAYER, QUESTION_ACTIVE, "answer question")
+    fun answerQuestion(answer: String, questionIndex: Int = currentQuestionIdx) {
+        expect(PLAYER, anyOf(QUESTION_ACTIVE, QUESTION_ANSWERED), "answer question")
 
-        rounds[currentRoundIdx].answers[currentQuestionIdx] = answer
+        if (questionIndex < 0 || questionIndex > currentQuestionIdx)
+            throw IndexOutOfBoundsException("Invalid question index: $questionIndex")
 
-        connectivityProvider.sendData(GameMessage(GameMessageType.ANSWER, playerName))
+        val answers = rounds[currentRoundIdx].answers
+        val isNewAnswer = questionIndex == currentQuestionIdx && answers[questionIndex].isEmpty()
 
-        phase = QUESTION_ANSWERED
+        answers[questionIndex] = answer
+
+        // update phase and notify master only if the answer is new
+        if (isNewAnswer) {
+            connectivityProvider.sendData(GameMessage(GameMessageType.ANSWER, playerName))
+
+            phase = QUESTION_ANSWERED
+        }
     }
 
     fun submitRoundAnswers() {

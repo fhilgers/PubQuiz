@@ -14,13 +14,15 @@ import at.aau.appdev.g7.pubquiz.domain.Game
 import at.aau.appdev.g7.pubquiz.domain.GamePhase
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.navigate
+import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
 import dev.olshevski.navigation.reimagined.replaceAll
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun PlayerScreen(
-    game: Game
+    game: Game,
+    onRestart: () -> Unit
 ) {
     val playerController = rememberNavController<PlayerDestination>(
         startDestination = PlayerDestination.Start)
@@ -37,6 +39,10 @@ fun PlayerScreen(
     }
     var selectedAnswers by remember {
         mutableStateOf(listOf<String>())
+    }
+
+    var roundSubmitted by remember {
+        mutableStateOf(false)
     }
 
     AnimatedNavHost(controller = playerController, transitionSpec = customTransitionSpec) { destination ->
@@ -56,6 +62,7 @@ fun PlayerScreen(
                             gameStarting = true
                         }
                         game.onNewRoundStart = {
+                            roundSubmitted = false
                             playerController.replaceAll(PlayerDestination.RoundStart)
                         }
                         game.onNewQuestion = {
@@ -95,16 +102,42 @@ fun PlayerScreen(
                     questionText = game.currentQuestion.text,
                     answers = game.currentQuestion.answers,
                     selectedAnswer = selectedAnswers[index],
-                    onAnswer = { a ->
-                        game.answerQuestion(a)
+                    onAnswer = { answer ->
+                        game.answerQuestion(answer)
                         selectedAnswers = game.currentRound.answers.toList()
                     }
                 )
             }
 
-            is PlayerDestination.RoundEnd -> {}
+            is PlayerDestination.RoundEnd -> {
+                PlayerRoundEnd(
+                    roundName = game.currentRound.name,
+                    submitted = roundSubmitted,
+                    questions = game.currentRound.questions,
+                    selectedAnswers = selectedAnswers,
+                    onAnswerChanged = { index, answer ->
+                        game.answerQuestion(answer, index)
+                        selectedAnswers = game.currentRound.answers.toList()
+                    }
+                ) {
+                    game.submitRoundAnswers()
+                    roundSubmitted = true
+                }
+            }
 
-            is PlayerDestination.GameOver -> {}
+            is PlayerDestination.GameOver -> {
+                PlayerGameOver() {
+                    // reset state
+                    playerReady = false
+                    connected = false
+                    gameStarting = false
+                    selectedAnswers = listOf()
+                    roundSubmitted = false
+                    playerController.replaceAll(PlayerDestination.Start)
+                    // and propagate restart
+                    onRestart()
+                }
+            }
         }
     }
 }

@@ -57,7 +57,7 @@ class PlayerDemoConnectivitySimulator(
                         simulateData(
                             GameMessage(
                                 QUESTION,
-                                "Question questionIdx",
+                                "Question $questionIdx",
                                 listOf("A", "B", "C", "D")
                             )
                         )

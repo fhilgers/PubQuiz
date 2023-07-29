@@ -1,6 +1,5 @@
 package at.aau.appdev.g7.pubquiz.ui.screens.player
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize

@@ -57,6 +57,7 @@ import dev.olshevski.navigation.reimagined.NavTransitionSpec
 import dev.olshevski.navigation.reimagined.moveToTop
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.pop
+import dev.olshevski.navigation.reimagined.popAll
 import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
 import kotlinx.parcelize.Parcelize
@@ -257,7 +258,13 @@ fun NavHostScreen(
                 when (destination) {
                     BottomDestination.Player -> {
                         showBottomNavigation = false
-                        PlayerScreen(game!!)
+                        PlayerScreen(
+                            game = game!!,
+                            onRestart = {
+                                showBottomNavigation = true
+                                navController.popAll()
+                            }
+                        )
                     }
 
                     BottomDestination.Master -> {
