@@ -57,6 +57,7 @@ import dev.olshevski.navigation.reimagined.NavTransitionSpec
 import dev.olshevski.navigation.reimagined.moveToTop
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.pop
+import dev.olshevski.navigation.reimagined.popAll
 import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
 import kotlinx.parcelize.Parcelize
@@ -128,9 +129,19 @@ sealed class PlayerDestination : Parcelable {
     @Parcelize
     object Start : PlayerDestination()
 
-
     @Parcelize
     object Lobby : PlayerDestination()
+    @Parcelize
+    object RoundStart : PlayerDestination()
+
+    @Parcelize
+    data class Question(val index: Int): PlayerDestination()
+
+    @Parcelize
+    object RoundEnd : PlayerDestination()
+
+    @Parcelize
+    object GameOver : PlayerDestination()
 }
 
 enum class BottomDestination {
@@ -247,7 +258,13 @@ fun NavHostScreen(
                 when (destination) {
                     BottomDestination.Player -> {
                         showBottomNavigation = false
-                        PlayerScreen(game!!)
+                        PlayerScreen(
+                            game = game!!,
+                            onRestart = {
+                                showBottomNavigation = true
+                                navController.popAll()
+                            }
+                        )
                     }
 
                     BottomDestination.Master -> {
@@ -447,7 +464,7 @@ fun MasterScreen(
                 showBottomNavigation(false)
 
                 val questions = remember {
-                    game.currentRound.questions.map { it.text ?: "Question ${it.index}" }
+                    game.currentRound.questions.map { it.text }
                 }
 
                 MasterQuestionsScreen(
@@ -481,7 +498,7 @@ fun MasterScreen(
                 }
 
                 MasterAnswerTimerScreen(
-                    title = game.currentQuestion.text ?: "Question ${game.currentQuestion.index}",
+                    title = game.currentQuestion.text,
                     maxTicks = time,
                     ticks = ticks,
                     playerAnswers = playerAnswers,
@@ -518,7 +535,7 @@ fun MasterScreen(
                 }
 
                 MasterAnswerTimerScreen(
-                    title = game.currentRound.name ?: "Round ${game.currentRound.index}",
+                    title = game.currentRound.name,
                     maxTicks = timeout,
                     ticks = ticks,
                     playerAnswers = playerAnswers,

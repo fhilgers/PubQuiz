@@ -14,12 +14,15 @@ import at.aau.appdev.g7.pubquiz.domain.Game
 import at.aau.appdev.g7.pubquiz.domain.GamePhase
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.navigate
+import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
+import dev.olshevski.navigation.reimagined.replaceAll
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun PlayerScreen(
-    game: Game
+    game: Game,
+    onRestart: () -> Unit
 ) {
     val playerController = rememberNavController<PlayerDestination>(
         startDestination = PlayerDestination.Start)
@@ -32,6 +35,13 @@ fun PlayerScreen(
         mutableStateOf(false)
     }
     var gameStarting by remember {
+        mutableStateOf(false)
+    }
+    var selectedAnswers by remember {
+        mutableStateOf(listOf<String>())
+    }
+
+    var roundSubmitted by remember {
         mutableStateOf(false)
     }
 
@@ -52,16 +62,18 @@ fun PlayerScreen(
                             gameStarting = true
                         }
                         game.onNewRoundStart = {
-
+                            roundSubmitted = false
+                            playerController.replaceAll(PlayerDestination.RoundStart)
                         }
                         game.onNewQuestion = {
-
+                            selectedAnswers = game.currentRound.answers.toList()
+                            playerController.navigate(PlayerDestination.Question(game.currentQuestionIdx))
                         }
                         game.onRoundEnd = {
-
+                            playerController.navigate(PlayerDestination.RoundEnd)
                         }
                         game.onGameOver = {
-
+                            playerController.replaceAll(PlayerDestination.GameOver)
                         }
 
                         playerController.navigate(PlayerDestination.Lobby)
@@ -76,6 +88,55 @@ fun PlayerScreen(
                         playerReady = true
                         game.readyPlayer()
                     }
+            }
+
+            is PlayerDestination.RoundStart -> {
+                PlayerRoundStart(
+                    roundName = game.currentRound.name
+                )
+            }
+
+            is PlayerDestination.Question -> {
+                val index = destination.index
+                PlayerQuestions(
+                    questionText = game.currentQuestion.text,
+                    answers = game.currentQuestion.answers,
+                    selectedAnswer = selectedAnswers[index],
+                    onAnswer = { answer ->
+                        game.answerQuestion(answer)
+                        selectedAnswers = game.currentRound.answers.toList()
+                    }
+                )
+            }
+
+            is PlayerDestination.RoundEnd -> {
+                PlayerRoundEnd(
+                    roundName = game.currentRound.name,
+                    submitted = roundSubmitted,
+                    questions = game.currentRound.questions,
+                    selectedAnswers = selectedAnswers,
+                    onAnswerChanged = { index, answer ->
+                        game.answerQuestion(answer, index)
+                        selectedAnswers = game.currentRound.answers.toList()
+                    }
+                ) {
+                    game.submitRoundAnswers()
+                    roundSubmitted = true
+                }
+            }
+
+            is PlayerDestination.GameOver -> {
+                PlayerGameOver() {
+                    // reset state
+                    playerReady = false
+                    connected = false
+                    gameStarting = false
+                    selectedAnswers = listOf()
+                    roundSubmitted = false
+                    playerController.replaceAll(PlayerDestination.Start)
+                    // and propagate restart
+                    onRestart()
+                }
             }
         }
     }

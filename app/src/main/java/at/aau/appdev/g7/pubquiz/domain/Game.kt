@@ -30,7 +30,7 @@ class Game (
     val numberOfRounds: Int
         get() = rounds.size
     val roundNames: List<String>
-        get() = rounds.map { it.name ?: "Round ${it.index}" }
+        get() = rounds.map { it.name }
 
     val currentRound: Round
         get() = rounds[currentRoundIdx]
@@ -99,7 +99,7 @@ class Game (
                 phase = ROUND_STARTED
                 currentRoundIdx++
                 currentQuestionIdx = -1
-                rounds.add(currentRoundIdx, Round(currentRoundIdx, message.name))
+                rounds.add(currentRoundIdx, Round(currentRoundIdx, message.name!!))
                 onNewRoundStart.invoke()
             }
             GameMessageType.ROUND_END -> {
@@ -109,7 +109,7 @@ class Game (
                 // TODO expect(PLAYER, )
                 phase = QUESTION_ACTIVE
                 currentQuestionIdx++
-                currentRound.questions.add(Question(currentQuestionIdx, message.name, message.answers!!))
+                currentRound.questions.add(Question(currentQuestionIdx, message.name!!, message.answers!!))
                 currentRound.answers.add("")
                 onNewQuestion.invoke()
             }
@@ -126,8 +126,10 @@ class Game (
                 identifyPlayer(message).answersPerRound.add(message.answers!!)
                 onPlayerSubmitRound.invoke(message.name!!)
             }
-            // TODO
-            else -> {}
+            GameMessageType.GAME_OVER -> {
+                phase = END
+                onGameOver.invoke()
+            }
         }
     }
 
@@ -246,15 +248,26 @@ class Game (
 
     /**
      * 12. As a Player, I can select the answer for current question
+     * @param answer Answer to the target question
+     * @param questionIndex Index of the target question. If not specified, current question is assumed.
      */
-    fun answerQuestion(answer: String) {
-        expect(PLAYER, QUESTION_ACTIVE, "answer question")
+    fun answerQuestion(answer: String, questionIndex: Int = currentQuestionIdx) {
+        expect(PLAYER, anyOf(QUESTION_ACTIVE, QUESTION_ANSWERED), "answer question")
 
-        rounds[currentRoundIdx].answers[currentQuestionIdx] = answer
+        if (questionIndex < 0 || questionIndex > currentQuestionIdx)
+            throw IndexOutOfBoundsException("Invalid question index: $questionIndex")
 
-        connectivityProvider.sendData(GameMessage(GameMessageType.ANSWER, playerName))
+        val answers = rounds[currentRoundIdx].answers
+        val isNewAnswer = questionIndex == currentQuestionIdx && answers[questionIndex].isEmpty()
 
-        phase = QUESTION_ANSWERED
+        answers[questionIndex] = answer
+
+        // update phase and notify master only if the answer is new
+        if (isNewAnswer) {
+            connectivityProvider.sendData(GameMessage(GameMessageType.ANSWER, playerName))
+
+            phase = QUESTION_ANSWERED
+        }
     }
 
     fun submitRoundAnswers() {
@@ -385,15 +398,16 @@ class GameProtocol: ConnectivityProtocol<GameMessage> {
 
 data class Round(
     val index: Int,
-    val name: String?,
+    val name: String,
     val questions: MutableList<Question> = mutableListOf()
 ) {
     val answers = MutableList(questions.size) { "" }
 }
 
-data class Question(val index: Int, val text: String?, val answers: List<String>) {
-
-}
+data class Question(
+    val index: Int,
+    val text: String,
+    val answers: List<String>)
 
 data class Player(val name: String) {
     val answersPerRound: MutableList<List<String>> = mutableListOf()
