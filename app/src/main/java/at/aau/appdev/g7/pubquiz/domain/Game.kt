@@ -207,6 +207,10 @@ class Game(
         phase = SETUP
     }
 
+    fun setupGame(configuration: GameConfiguration) {
+        setupGame(configuration.numberOfRounds, configuration.numberOfQuestions, configuration.numberOfAnswers)
+    }
+
     // TODO add overloaded setup() for import use case as soon as it will be needed
 
     fun createGame() {

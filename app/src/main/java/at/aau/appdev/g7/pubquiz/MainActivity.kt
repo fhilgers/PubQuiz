@@ -6,19 +6,16 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.with
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -27,7 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -47,7 +44,8 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
 import at.aau.appdev.g7.pubquiz.providers.NearbyConnectivityProvider
 import at.aau.appdev.g7.pubquiz.providers.nearbyProviderPermissions
-import at.aau.appdev.g7.pubquiz.ui.screens.master.GameConfiguration
+import at.aau.appdev.g7.pubquiz.providers.persistence.PersistenceDataProvider
+import at.aau.appdev.g7.pubquiz.domain.GameConfiguration
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterLobby
@@ -88,6 +86,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        dataProvider = PersistenceDataProvider(applicationContext)
+
         setContent {
             PubQuizTheme {
                 // A surface container using the 'background' color from the theme
@@ -107,7 +107,7 @@ class MainActivity : ComponentActivity() {
                                     UserRole.MASTER -> MasterDemoConnectivitySimulator()
                                 }
                             } else NearbyConnectivityProvider(this)
-                            dataProvider = object: DataProvider {}
+                            //dataProvider = object: DataProvider {}
                             game = Game(it, connectivityProvider, dataProvider)
                             Log.i(TAG, "MainActivity: game created: ${game.phase}")
                             game
@@ -321,8 +321,12 @@ fun MasterScreen(
     game: Game,
     showBottomNavigation: (Boolean) -> Unit
 ) {
+    val dataProvider = game.dataProvider
     var configuredGames by rememberSaveable {
         mutableStateOf(listOf<GameConfiguration>())
+    }
+    LaunchedEffect(game) {
+        configuredGames = dataProvider.getGameConfigurations()
     }
     var players by rememberSaveable {
         mutableStateOf(listOf<Player>())
@@ -330,33 +334,6 @@ fun MasterScreen(
     var playerAnswers by rememberSaveable {
         mutableStateOf(listOf<PlayerAnswer>())
     }
-
-//    val basePlayerAnswers = players.map {
-//        PlayerAnswer(it.name, null)
-//    }
-//
-//    val makeAnswers: (tick: Int) -> List<PlayerAnswer> = {tick ->
-//        if (tick <= 1) {
-//            basePlayerAnswers
-//        } else if (tick <= 2) {
-//            basePlayerAnswers.toMutableList().also {
-//                it[0].answer = 0
-//            }
-//        } else if (tick <= 3 ) {
-//             basePlayerAnswers.toMutableList().also {
-//                it[0].answer = 1
-//                it[1].answer = 0
-//                it[2].answer = 1
-//            }
-//        } else {
-//            basePlayerAnswers.toMutableList().also {
-//                it[0].answer = 1
-//                it[1].answer = 0
-//                it[2].answer = 2
-//                it[3].answer = 1
-//            }
-//        }
-//    }
 
     val masterController = rememberNavController<MasterDestination>(
         startDestination = MasterDestination.Start
@@ -381,13 +358,14 @@ fun MasterScreen(
                 }, onEdit = {
                     masterController.navigate(MasterDestination.Setup(it))
                 }, onDelete = {
+                    dataProvider.deleteGameConfiguration(configuredGames[it])
                     configuredGames = configuredGames.toMutableList().also { list ->
                         list.removeAt(it)
                     }
                 }, onHost = {
-                    val c = configuredGames[it]
-                    game.setupGame(c.numberOfRounds, c.numberOfQuestions, c.numberOfAnswers)
-                    Log.d(TAG, "MasterScreen: game setup: $c -> ${game.phase}")
+                    val configuration = configuredGames[it]
+                    game.setupGame(configuration)
+                    Log.d(TAG, "MasterScreen: game setup: $configuration -> ${game.phase}")
                     game.createGame()
                     Log.d(TAG, "MasterScreen: game created: ${game.phase}")
                     game.onPlayerJoined = { p ->
@@ -439,6 +417,7 @@ fun MasterScreen(
                 destination.index?.also {
                     MasterSetup(
                         onCreate = { config ->
+                            dataProvider.saveGameConfiguration(config)
                             configuredGames = configuredGames.toMutableList().also { list ->
                                 list[it] = config
                             }
@@ -450,6 +429,7 @@ fun MasterScreen(
                 } ?: run {
                     MasterSetup(
                         onCreate = { config ->
+                            dataProvider.saveGameConfiguration(config)
                             configuredGames = configuredGames.toMutableList().also { list ->
                                 list.add(config)
                             }
