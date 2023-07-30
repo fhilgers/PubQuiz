@@ -346,12 +346,8 @@ class Game(
         expect(MASTER, anyOf(ROUND_STARTED, QUESTION_ANSWERED), "start next question")
 
         currentQuestionIdx++
-        val question = currentQuestion
 
         players.forEach { it.value.answered = false }
-        broadcast(GameMessage(GameMessageType.QUESTION, question.text, question.answers))
-
-        phase = QUESTION_ACTIVE
     }
 
     /**
@@ -401,7 +397,11 @@ class Game(
 
         rounds[currentRoundIdx].answers[currentQuestionIdx] = answer
 
-        // phase is not changed!
+        // phase is changed!
+        val question = currentQuestion
+        broadcast(GameMessage(GameMessageType.QUESTION, question.text, question.answers))
+
+        phase = QUESTION_ACTIVE
     }
 
     /**
