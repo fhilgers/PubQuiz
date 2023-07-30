@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -131,11 +132,13 @@ fun MasterAnswerTimerScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(text = "${ticks}s / ${maxTicks}s", style = MaterialTheme.typography.headlineSmall)
                     // ExtendedFloatingActionButton(onClick = { if (it) onPauseTimer() else onStartTimer() }) {
                     //                        Text(text = if (timerStarted) "Pause Timer" else "Start Timer")
                     //                }
+                    Spacer(Modifier.weight(1f))
                     IconButton(onClick = onStartTimer) {
                         Icon(Icons.Filled.PlayArrow, contentDescription = "Start Timer")
                     }
