@@ -1,5 +1,6 @@
 package at.aau.appdev.g7.pubquiz.ui.screens.master
 
+import android.os.Parcelable
 import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentScope
@@ -58,9 +59,11 @@ import at.aau.appdev.g7.pubquiz.ui.components.HandleUnimplementedBackNavigation
 import at.aau.appdev.g7.pubquiz.ui.components.PlayerAvatar
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 import kotlinx.coroutines.delay
+import kotlinx.parcelize.Parcelize
 import kotlin.time.Duration.Companion.seconds
 
-data class PlayerAnswer(val from: String, val answered: Boolean = false)
+@Parcelize
+data class PlayerAnswer(val from: String, val answered: Boolean = false): Parcelable
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable

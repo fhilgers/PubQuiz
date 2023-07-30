@@ -1,5 +1,7 @@
 package at.aau.appdev.g7.pubquiz.ui.screens.master
 
+import android.os.Parcel
+import android.os.Parcelable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -33,14 +35,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class GameConfiguration(
     val name: String,
     val numberOfRounds: Int,
     val numberOfQuestions: Int,
     val numberOfAnswers: Int,
     val timePerQuestion: Int
-)
+) : Parcelable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
