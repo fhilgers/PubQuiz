@@ -41,6 +41,8 @@ import at.aau.appdev.g7.pubquiz.domain.GameMessage
 import at.aau.appdev.g7.pubquiz.domain.UserRole
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
+import at.aau.appdev.g7.pubquiz.providers.NearbyConnectivityProvider
+import at.aau.appdev.g7.pubquiz.providers.nearbyProviderPermissions
 import at.aau.appdev.g7.pubquiz.ui.screens.master.GameConfiguration
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
@@ -53,6 +55,8 @@ import at.aau.appdev.g7.pubquiz.ui.screens.master.Player
 import at.aau.appdev.g7.pubquiz.ui.screens.master.PlayerAnswer
 import at.aau.appdev.g7.pubquiz.ui.screens.player.PlayerScreen
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.NavAction
 import dev.olshevski.navigation.reimagined.NavBackHandler
@@ -74,6 +78,7 @@ class MainActivity : ComponentActivity() {
     lateinit var dataProvider: DataProvider
     lateinit var game: Game
 
+    @OptIn(ExperimentalPermissionsApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -84,19 +89,28 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavHostScreen(onUserRoleChosen = {
-                        // TODO replace these provider stubs with real ones as soon as they are implemented
-                        connectivityProvider = if (DEMO_MODE) {
-                            when(it) {
-                                UserRole.PLAYER -> PlayerDemoConnectivitySimulator()
-                                UserRole.MASTER -> MasterDemoConnectivitySimulator()
-                            }
-                        } else /* TODO replace by real provider */ MasterDemoConnectivitySimulator()
-                        dataProvider = object: DataProvider {}
-                        game = Game(it, connectivityProvider, dataProvider)
-                        Log.i(TAG, "MainActivity: game created: ${game.phase}")
-                        game
-                    })
+
+                    val permissions = rememberMultiplePermissionsState(permissions = nearbyProviderPermissions)
+
+                    if (permissions.allPermissionsGranted || DEMO_MODE) {
+                        NavHostScreen(onUserRoleChosen = {
+                            // TODO replace these provider stubs with real ones as soon as they are implemented
+                            connectivityProvider = if (DEMO_MODE) {
+                                when(it) {
+                                    UserRole.PLAYER -> PlayerDemoConnectivitySimulator()
+                                    UserRole.MASTER -> MasterDemoConnectivitySimulator()
+                                }
+                            } else NearbyConnectivityProvider(this)
+                            dataProvider = object: DataProvider {}
+                            game = Game(it, connectivityProvider, dataProvider)
+                            Log.i(TAG, "MainActivity: game created: ${game.phase}")
+                            game
+                        })
+                    } else {
+                        Button(onClick = { permissions.launchMultiplePermissionRequest()}) {
+                            Text("Grant permissions")
+                        }
+                    }
                 }
             }
         }
