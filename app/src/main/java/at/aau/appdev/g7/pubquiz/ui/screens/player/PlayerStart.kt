@@ -23,15 +23,20 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun PlayerStart(
     connected: Boolean = false,
+    searching: Boolean = false,
     spacing: Dp = 40.dp,
     onSearchGame: () -> Unit = {},
-    onJoinGame: (name:String) -> Unit = {}
+    onJoinGame: (name:String) -> Unit = {},
+    onConnectGame: (endpoint:String) -> Unit = {},
+    endpoints: List<String> = emptyList()
 ) {
     var teamName by remember {
         mutableStateOf("")
     }
 
-    Column(modifier = Modifier.fillMaxSize().padding(spacing),
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .padding(spacing),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = spacedBy(spacing, Alignment.Bottom)) {
         if (connected) {
@@ -45,7 +50,18 @@ fun PlayerStart(
             Button(onClick = { onJoinGame(teamName) }) {
                 Text("Join Game")
             }
-        } else {
+        } else if (searching) {
+            Text(text = "Searching for games...")
+
+            Box(modifier = Modifier.fillMaxSize()) {
+                endpoints.forEach {
+                    Button(onClick = { onConnectGame(it) }) {
+                        Text(text = it)
+                    }
+                }
+            }
+        }
+        else {
             Button(onClick = onSearchGame) {
                 Text("Search Game")
             }
