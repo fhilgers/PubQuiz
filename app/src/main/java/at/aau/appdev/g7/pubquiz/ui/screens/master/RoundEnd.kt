@@ -24,9 +24,8 @@ import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MasterRoundsScreen(
-    roundNames: List<String>,
-    nextRoundName: String,
+fun MasterRoundEndScreen(
+    roundName: String,
     onNextRoundStart: () -> Unit,
 ) {
     HandleUnimplementedBackNavigation()
@@ -42,7 +41,7 @@ fun MasterRoundsScreen(
                 }
             },
         topBar = {
-            TopAppBar(title = { Text(text = nextRoundName) })
+            TopAppBar(title = { Text(text = roundName) })
         }
     ) { paddingValues ->
         LazyColumn(

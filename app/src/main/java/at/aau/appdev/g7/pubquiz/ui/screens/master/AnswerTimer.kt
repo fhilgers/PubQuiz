@@ -78,8 +78,6 @@ fun MasterAnswerTimerScreen(
     onPauseTimer: () -> Unit,
     onSkipTimer: () -> Unit,
 ) {
-//    Log.d(TAG,"MasterAnswerTimerScreen(playerAnswers: $playerAnswers)")
-
     HandleUnimplementedBackNavigation()
 
     LaunchedEffect(timerStarted) {
