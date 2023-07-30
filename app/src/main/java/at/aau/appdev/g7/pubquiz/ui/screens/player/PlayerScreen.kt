@@ -1,7 +1,14 @@
 package at.aau.appdev.g7.pubquiz.ui.screens.player
 
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,7 +33,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun PlayerScreen(
     game: Game,
-    onRestart: () -> Unit
+    onRestart: () -> Unit,
+    onClose: () -> Unit,
 ) {
     val playerController = rememberNavController<PlayerDestination>(
         startDestination = PlayerDestination.Start)
@@ -56,6 +64,40 @@ fun PlayerScreen(
     val endpoints = game.endpoints.collectAsState()
 
     val composableScope = rememberCoroutineScope()
+
+    var showCloseDialog by remember {
+        mutableStateOf(false)
+    }
+
+    //TODO
+    BackHandler {
+        showCloseDialog = !showCloseDialog
+    }
+
+    if (showCloseDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCloseDialog = false
+            },
+            icon = { Icon(Icons.Filled.Warning, contentDescription = null) },
+            title = {
+                Text(text = "Go back?")
+            },
+            text = {
+                Text(text = "Going back will stop discovering nearby games.")
+            },
+            confirmButton = {
+                TextButton(onClick = onClose) {
+                    Text("Close")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCloseDialog = false }) {
+                    Text("Dismiss")
+                }
+            }
+        )
+    }
 
 
     AnimatedNavHost(controller = playerController, transitionSpec = customTransitionSpec) { destination ->

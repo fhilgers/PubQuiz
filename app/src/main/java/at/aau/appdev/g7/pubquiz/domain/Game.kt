@@ -1,5 +1,6 @@
 package at.aau.appdev.g7.pubquiz.domain
 
+import android.os.Parcelable
 import android.util.Log
 import at.aau.appdev.g7.pubquiz.domain.UserRole.*
 import at.aau.appdev.g7.pubquiz.domain.GamePhase.*
@@ -11,6 +12,7 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolException
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.first
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.parcelize.Parcelize
 import java.util.EnumSet
 
 class Game(
@@ -28,6 +31,8 @@ class Game(
     private lateinit var rounds: MutableList<Round>
     var phase = INIT
         private set
+
+    private var connectionScope = CoroutineScope(Dispatchers.IO)
 
     lateinit var playerName: String
 
@@ -56,6 +61,7 @@ class Game(
         get() = currentQuestionIdx < currentRound.questions.size - 1
 
     // Master UI events
+    var onConnectionRequest: (player: String) -> Unit = {}
     var onPlayerJoined: (player: String) -> Unit = {}
     var onPlayerLeft: (player: String) -> Unit = {}
     var onPlayerReady: (player: String) -> Unit = {}
@@ -69,10 +75,19 @@ class Game(
     var onRoundEnd: () -> Unit = {}
     var onGameOver: () -> Unit = {}
 
-    val connections = mutableSetOf<ConnectionProvider<GameMessage>>()
+    val connections = mutableMapOf<String, ConnectionProvider<GameMessage>>()
 
     init {
         connectivityProvider.protocol = GameProtocol()
+
+        connectivityProvider.initiatedConnections
+            .onEach { playerIds ->
+                playerIds.minus(connections.keys).forEach {playerId ->
+                    Log.d("MYCUSTOMLOG", "New connection: $playerId")
+                    onConnectionRequest(playerId)
+                }
+            }
+            .launchIn(connectionScope)
     }
 
     private fun identifyPlayer(message: GameMessage): Player {
@@ -163,6 +178,18 @@ class Game(
     }
 
     /**
+     * 0. When I close a lobby I want to be able to host a new one
+     */
+    fun reset() {
+        phase = INIT
+        rounds = mutableListOf()
+        currentRoundIdx = -1
+        currentQuestionIdx = -1
+        players.clear()
+        connectionScope.cancel()
+    }
+
+    /**
      * 1. As a Master, I can set up a new pub quiz session
      */
     fun setupGame(numberOfRounds: Int, questionsPerRound: Int, answersPerQuestion: Int) {
@@ -191,7 +218,7 @@ class Game(
         expectPhase(SETUP, "create game")
 
         // TODO advertise game, wait for players
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connectivityProvider.advertise()
         }
 
@@ -223,7 +250,7 @@ class Game(
         expectPhase(INIT, "search game")
         // TODO search game, after game is found, join game.
 
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connectivityProvider.discover()
         }
 
@@ -237,13 +264,13 @@ class Game(
 
         val connection = connectivityProvider.connect(serverId)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connection.messages.collect { message ->
                 onReceiveData(message)
             }
         }
 
-        connections.add(connection)
+        connections[serverId] = connection
 
         // TODO define phase
     }
@@ -255,13 +282,13 @@ class Game(
 
         val connection = connectivityProvider.accept(clientId)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connection.messages.collect { message ->
                 onReceiveData(message)
             }
         }
 
-        connections.add(connection)
+        connections[clientId] = connection
 
         // TODO define phase
     }
@@ -419,15 +446,17 @@ class Game(
         expectRole(MASTER, "broadcast")
         runBlocking {
             connections.forEach {
-                it.send(message)
+                it.value.send(message)
             }
         }
     }
 
     private fun sendToMaster(message: GameMessage) {
         expectRole(PLAYER, "send to master")
+        assert(connections.size == 1)
+
         runBlocking {
-            connections.first().send(message)
+            connections.values.first().send(message)
         }
     }
 }
@@ -445,11 +474,12 @@ enum class GamePhase {
     END
 }
 
+@Parcelize
 data class GameMessage(
     val type: GameMessageType,
     val name: String? = null,
     val answers: List<String>? = null
-) : ProtocolMessage
+) : ProtocolMessage, Parcelable
 
 enum class GameMessageType {
     PLAYER_JOIN,
@@ -506,22 +536,25 @@ class GameProtocol : ConnectivityProtocol<GameMessage> {
     }
 }
 
+@Parcelize
 data class Round(
     val index: Int,
     val name: String,
-    val questions: MutableList<Question> = mutableListOf()
-) {
-    val answers = MutableList(questions.size) { "" }
-}
+    val questions: MutableList<Question> = mutableListOf(),
+    val answers: MutableList<String> = MutableList(questions.size) { "" }
+): Parcelable
 
+@Parcelize
 data class Question(
     val index: Int,
     val text: String,
     val answers: List<String>
-)
+): Parcelable
 
-data class Player(val name: String) {
-    val answersPerRound: MutableList<List<String>> = mutableListOf()
-    var ready: Boolean = false
+@Parcelize
+data class Player(
+    val name: String,
+    val answersPerRound: MutableList<List<String>> = mutableListOf(),
+    var ready: Boolean = false,
     var answered: Boolean = false
-}
+): Parcelable

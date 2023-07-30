@@ -1,5 +1,7 @@
 package at.aau.appdev.g7.pubquiz.ui.screens.master
 
+import android.os.Parcel
+import android.os.Parcelable
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween

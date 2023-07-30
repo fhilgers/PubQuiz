@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -71,9 +72,10 @@ import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
+import java.lang.RuntimeException
 
 const val TAG = "PubQuiz"
-const val DEMO_MODE = true
+const val DEMO_MODE = false
 
 class MainActivity : ComponentActivity() {
     lateinit var connectivityProvider: ConnectivityProvider<GameMessage>
@@ -169,18 +171,21 @@ sealed class PlayerDestination : Parcelable {
 enum class BottomDestination {
     Player,
     Master,
+    None,
 }
 
 val BottomDestination.title
     get() = when (this) {
         BottomDestination.Player -> "Player"
         BottomDestination.Master -> "Master"
+        BottomDestination.None -> throw RuntimeException("No title for None")
     }
 
 val BottomDestination.icon
     get() = when (this) {
         BottomDestination.Player -> Icons.Filled.Face
         BottomDestination.Master -> Icons.Filled.Person
+        BottomDestination.None -> throw RuntimeException("No icon for None")
     }
 
 val customTransitionSpec = NavTransitionSpec<Any?> { action: NavAction, _, _ ->
@@ -227,8 +232,8 @@ fun NavHostScreen(
 ) {
 
 
-    val navController = rememberNavController<BottomDestination>(
-        initialBackstack = listOf()
+    val navController = rememberNavController(
+        initialBackstack = listOf(BottomDestination.None)
     )
 
     BottomNavigationBackHandler(navController = navController)
@@ -237,25 +242,18 @@ fun NavHostScreen(
         mutableStateOf(true)
     }
 
-    var game: Game? by remember {
-        mutableStateOf(null)
-    }
+    val lastDestination = navController.backstack.entries.lastOrNull()?.destination
 
     Scaffold(
         bottomBar = {
             AnimatedVisibility(visible = showBottomNavigation) {
                 NavigationBar {
-                    val lastDestination = navController.backstack.entries.lastOrNull()?.destination
 
-                    BottomDestination.values().forEach { destination ->
+                    BottomDestination.values().filterNot { it == BottomDestination.None }.forEach { destination ->
                         NavigationBarItem(
                             selected = destination == lastDestination,
                             onClick = {
                                 if (!navController.moveToTop { it == destination }) {
-                                    game = onUserRoleChosen.invoke(when (destination) {
-                                        BottomDestination.Player -> UserRole.PLAYER
-                                        BottomDestination.Master -> UserRole.MASTER
-                                    })
                                     navController.navigate(destination)
                                 }
 
@@ -277,21 +275,39 @@ fun NavHostScreen(
                 when (destination) {
                     BottomDestination.Player -> {
                         showBottomNavigation = false
+
+                        val game by remember {
+                            derivedStateOf { onUserRoleChosen(UserRole.PLAYER) }
+                        }
+
                         PlayerScreen(
-                            game = game!!,
+                            game = game,
                             onRestart = {
                                 showBottomNavigation = true
                                 navController.popAll()
+                            },
+                            onClose = {
+                                game.reset()
+                                navController.navigate(BottomDestination.None)
                             }
                         )
                     }
 
                     BottomDestination.Master -> {
+
+                        val game by remember {
+                            derivedStateOf { onUserRoleChosen(UserRole.MASTER) }
+                        }
+
                         MasterScreen(
-                            game = game!!,
+                            game = game,
                             showBottomNavigation = {
                                 showBottomNavigation = it
                             })
+                    }
+
+                    BottomDestination.None -> {
+                        showBottomNavigation = true
                     }
                 }
             }
@@ -435,6 +451,7 @@ fun MasterScreen(
                     players = players,
                     password = "456048",
                     onClose = {
+                        game.reset()
                         masterController.popUpTo { it == MasterDestination.Start }
                     },
                     onReady = {
