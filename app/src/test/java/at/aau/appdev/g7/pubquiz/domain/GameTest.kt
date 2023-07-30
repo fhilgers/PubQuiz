@@ -122,7 +122,7 @@ class TestDataProvider : DataProvider {
 
     }
 
-    override fun getGameConfigurations(): List<GameConfiguration> {
+    override suspend fun getGameConfigurations(): List<GameConfiguration> {
         return listOf()
     }
 
@@ -228,6 +228,9 @@ class GameTest {
             while (master.hasNextQuestion) {
                 // 10
                 master.startNextQuestion()
+                
+                //13
+                master.selectCorrectAnswer(master.currentQuestion.answers.random())
 
                 // 11
                 assertTrue(players.all { it.phase == GamePhase.QUESTION_ACTIVE })
@@ -236,8 +239,6 @@ class GameTest {
                 // 12
                 players.forEach { p -> p.answerQuestion(p.currentQuestion.answers.random()) }
 
-                //13
-                master.selectCorrectAnswer(master.currentQuestion.answers.random())
                 // TODO master.players.forEach { i,p -> p }
             }
 
