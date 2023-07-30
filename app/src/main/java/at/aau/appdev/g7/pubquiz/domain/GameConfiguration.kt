@@ -8,5 +8,6 @@ data class GameConfiguration(
     val numberOfQuestions: Int,
     val numberOfAnswers: Int,
     val timePerQuestion: Int,
-    val id: UUID = UUID.randomUUID()
+    val id: UUID = UUID.randomUUID(),
+    val timestamp: Long = System.currentTimeMillis()
 )

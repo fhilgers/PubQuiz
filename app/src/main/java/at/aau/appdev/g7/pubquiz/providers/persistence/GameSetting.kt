@@ -22,5 +22,8 @@ data class GameSetting(
     val answersPerQuestion: Int,
 
     @ColumnInfo(name = "time_per_question")
-    val timePerQuestion: Int
+    val timePerQuestion: Int,
+
+    @ColumnInfo(name = "created_timestamp")
+    val createdTimestamp: Long
 )

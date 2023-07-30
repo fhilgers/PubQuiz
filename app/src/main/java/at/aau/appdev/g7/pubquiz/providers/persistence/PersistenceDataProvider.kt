@@ -28,7 +28,8 @@ class PersistenceDataProvider(applicationContext: Context) : DataProvider {
                 gameConfiguration.numberOfRounds,
                 gameConfiguration.numberOfQuestions,
                 gameConfiguration.numberOfAnswers,
-                gameConfiguration.timePerQuestion
+                gameConfiguration.timePerQuestion,
+                gameConfiguration.timestamp
             )
 
             db.dao().saveGameSetting(model)

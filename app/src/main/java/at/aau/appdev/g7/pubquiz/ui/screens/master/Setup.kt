@@ -54,9 +54,6 @@ fun MasterSetup(
     var name by remember {
         mutableStateOf(initialGameConfiguration.name)
     }
-    var id by remember {
-        mutableStateOf(initialGameConfiguration.id)
-    }
 
     Scaffold(
         topBar = {
@@ -70,7 +67,8 @@ fun MasterSetup(
                 TextButton(onClick = {
                     onCreate(
                         GameConfiguration(
-                            id = id,
+                            id = initialGameConfiguration.id,
+                            timestamp = initialGameConfiguration.timestamp,
                             name = name,
                             numberOfRounds = numberOfRounds.roundToInt(),
                             numberOfQuestions = numberOfQuestions.roundToInt(),

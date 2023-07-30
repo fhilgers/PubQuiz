@@ -10,7 +10,7 @@ import java.util.UUID
 
 @Dao
 interface GamesDao {
-    @Query("select * from GameSetting")
+    @Query("select * from GameSetting order by created_timestamp")
     suspend fun findGameSettings(): List<GameSetting>
 
     @Upsert

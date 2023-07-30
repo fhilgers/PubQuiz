@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "c0b06eaecc48a738c6de689f6d1f231d",
+    "identityHash": "572e3492a22bc50691fead82da9e1789",
     "entities": [
       {
         "tableName": "GameSetting",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `rounds_count` INTEGER NOT NULL, `questions_per_round` INTEGER NOT NULL, `answers_per_question` INTEGER NOT NULL, `time_per_question` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `name` TEXT NOT NULL, `rounds_count` INTEGER NOT NULL, `questions_per_round` INTEGER NOT NULL, `answers_per_question` INTEGER NOT NULL, `time_per_question` INTEGER NOT NULL, `created_timestamp` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -43,6 +43,12 @@
             "columnName": "time_per_question",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "createdTimestamp",
+            "columnName": "created_timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -58,7 +64,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c0b06eaecc48a738c6de689f6d1f231d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '572e3492a22bc50691fead82da9e1789')"
     ]
   }
 }
