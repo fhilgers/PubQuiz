@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
@@ -139,11 +140,14 @@ fun MasterAnswerTimerScreen(
                     //                        Text(text = if (timerStarted) "Pause Timer" else "Start Timer")
                     //                }
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = onStartTimer) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Start Timer")
-                    }
-                    IconButton(onClick = onPauseTimer) {
-                        Icon(Icons.Filled.Add, contentDescription = "Pause Timer")
+                    if (timerStarted) {
+                        IconButton(onClick = onPauseTimer) {
+                            Icon(Icons.Filled.Pause, contentDescription = "Pause Timer")
+                        }
+                    } else {
+                        IconButton(onClick = onStartTimer) {
+                            Icon(Icons.Filled.PlayArrow, contentDescription = "Start Timer")
+                        }
                     }
                 }
             }
