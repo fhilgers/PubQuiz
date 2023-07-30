@@ -8,7 +8,7 @@ import java.util.UUID
 @Entity
 data class GameSetting(
     @PrimaryKey
-    val id: UUID,
+    val id: String,
 
     val name: String,
 

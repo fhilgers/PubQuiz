@@ -5,18 +5,17 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
+import java.util.UUID
 
 @Dao
 interface GamesDao {
     @Query("select * from GameSetting")
-    fun findGameSettings(): List<GameSetting>
+    suspend fun findGameSettings(): List<GameSetting>
 
-    @Insert
-    fun createGameSetting(model: GameSetting)
+    @Upsert
+    suspend fun saveGameSetting(model: GameSetting)
 
-    @Update
-    fun updateGameSetting(model: GameSetting)
-
-    @Delete
-    fun deleteGameSetting(model: GameSetting)
+    @Query("delete from GameSetting where id = :id")
+    suspend fun deleteGameSetting(id: String)
 }

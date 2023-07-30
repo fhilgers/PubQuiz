@@ -24,6 +24,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,7 +44,7 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
 import at.aau.appdev.g7.pubquiz.providers.NearbyConnectivityProvider
 import at.aau.appdev.g7.pubquiz.providers.nearbyProviderPermissions
 import at.aau.appdev.g7.pubquiz.providers.persistence.PersistenceDataProvider
-import at.aau.appdev.g7.pubquiz.ui.screens.master.GameConfiguration
+import at.aau.appdev.g7.pubquiz.domain.GameConfiguration
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterLobby
@@ -304,8 +305,12 @@ fun MasterScreen(
     game: Game,
     showBottomNavigation: (Boolean) -> Unit
 ) {
+    val dataProvider = game.dataProvider
     var configuredGames by rememberSaveable {
         mutableStateOf(listOf<GameConfiguration>())
+    }
+    LaunchedEffect(game) {
+        configuredGames = dataProvider.getGameConfigurations()
     }
     var players by rememberSaveable {
         mutableStateOf(listOf<Player>())
@@ -313,33 +318,6 @@ fun MasterScreen(
     var playerAnswers by rememberSaveable {
         mutableStateOf(listOf<PlayerAnswer>())
     }
-
-//    val basePlayerAnswers = players.map {
-//        PlayerAnswer(it.name, null)
-//    }
-//
-//    val makeAnswers: (tick: Int) -> List<PlayerAnswer> = {tick ->
-//        if (tick <= 1) {
-//            basePlayerAnswers
-//        } else if (tick <= 2) {
-//            basePlayerAnswers.toMutableList().also {
-//                it[0].answer = 0
-//            }
-//        } else if (tick <= 3 ) {
-//             basePlayerAnswers.toMutableList().also {
-//                it[0].answer = 1
-//                it[1].answer = 0
-//                it[2].answer = 1
-//            }
-//        } else {
-//            basePlayerAnswers.toMutableList().also {
-//                it[0].answer = 1
-//                it[1].answer = 0
-//                it[2].answer = 2
-//                it[3].answer = 1
-//            }
-//        }
-//    }
 
     val masterController = rememberNavController<MasterDestination>(
         startDestination = MasterDestination.Start
@@ -364,6 +342,7 @@ fun MasterScreen(
                 }, onEdit = {
                     masterController.navigate(MasterDestination.Setup(it))
                 }, onDelete = {
+                    dataProvider.deleteGameConfiguration(configuredGames[it])
                     configuredGames = configuredGames.toMutableList().also { list ->
                         list.removeAt(it)
                     }
@@ -422,6 +401,7 @@ fun MasterScreen(
                 destination.index?.also {
                     MasterSetup(
                         onCreate = { config ->
+                            dataProvider.saveGameConfiguration(config)
                             configuredGames = configuredGames.toMutableList().also { list ->
                                 list[it] = config
                             }
@@ -433,6 +413,7 @@ fun MasterScreen(
                 } ?: run {
                     MasterSetup(
                         onCreate = { config ->
+                            dataProvider.saveGameConfiguration(config)
                             configuredGames = configuredGames.toMutableList().also { list ->
                                 list.add(config)
                             }

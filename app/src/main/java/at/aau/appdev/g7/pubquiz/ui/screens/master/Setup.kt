@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import at.aau.appdev.g7.pubquiz.domain.GameConfiguration
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +54,9 @@ fun MasterSetup(
     var name by remember {
         mutableStateOf(initialGameConfiguration.name)
     }
+    var id by remember {
+        mutableStateOf(initialGameConfiguration.id)
+    }
 
     Scaffold(
         topBar = {
@@ -66,6 +70,7 @@ fun MasterSetup(
                 TextButton(onClick = {
                     onCreate(
                         GameConfiguration(
+                            id = id,
                             name = name,
                             numberOfRounds = numberOfRounds.roundToInt(),
                             numberOfQuestions = numberOfQuestions.roundToInt(),

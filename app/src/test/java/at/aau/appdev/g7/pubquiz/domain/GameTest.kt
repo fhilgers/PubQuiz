@@ -113,7 +113,20 @@ class TestConnectivityProvider(
     }
 }
 
-class TestDataProvider : DataProvider
+class TestDataProvider : DataProvider {
+    override fun saveGameConfiguration(gameConfiguration: GameConfiguration) {
+
+    }
+
+    override fun deleteGameConfiguration(gameConfiguration: GameConfiguration) {
+
+    }
+
+    override fun getGameConfigurations(): List<GameConfiguration> {
+        return listOf()
+    }
+
+}
 
 class GameTest {
     lateinit var master: Game
