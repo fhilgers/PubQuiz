@@ -1,35 +1,31 @@
 package at.aau.appdev.g7.pubquiz.domain.interfaces
 
-interface ConnectivityProvider<T: ProtocolMessage> {
-    var protocol: ConnectivityProtocol<T>
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 
-    /**
-     * Advertise new session
-     */
-    fun advertise()
+interface ConnectionProvider<M: ProtocolMessage> {
+    var protocol: ConnectivityProtocol<M>
 
-    /**
-     * Search for advertised session and connect
-     */
-    fun connect()
+    val messages: SharedFlow<M>
 
-    /**
-     * send data to other side, i.e.:
-     * - player sends data to the master;
-     * - master sends data to all players.
-     */
-    @Throws(ProtocolException::class)
-    fun sendData(data: T)
+    suspend fun send(message: M)
 
-    /**
-     * receive data from other side, i.e.:
-     * - player receives data from the master;
-     * - master receives data from a player.
-     *
-     * integrator is encouraged to signal errors using ProtocolException
-     */
-    var onReceiveData: (data: T) -> Unit
+    suspend fun close()
 }
+
+interface ConnectivityProvider<M: ProtocolMessage> {
+    var protocol: ConnectivityProtocol<M>
+
+    val discoveredEndpoints: StateFlow<Set<String>>
+    val initiatedConnections: StateFlow<Set<String>>
+
+    suspend fun advertise()
+    suspend fun discover()
+
+    suspend fun connect(endpointId: String): ConnectionProvider<M>
+    suspend fun accept(endpointId: String): ConnectionProvider<M>
+}
+
 
 /**
  * Connectivity protocol wrapper.
