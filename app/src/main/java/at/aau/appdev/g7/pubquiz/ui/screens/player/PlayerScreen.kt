@@ -27,6 +27,7 @@ import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
 import dev.olshevski.navigation.reimagined.replaceAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -47,6 +48,9 @@ fun PlayerScreen(
         mutableStateOf(false)
     }
     var searching by remember {
+        mutableStateOf(false)
+    }
+    var connecting by remember {
         mutableStateOf(false)
     }
 
@@ -107,6 +111,7 @@ fun PlayerScreen(
                 PlayerStart(
                     connected = connected,
                     searching = searching,
+                    connecting = connecting,
                     endpoints = endpoints.value.toList(),
                     onSearchGame = {
                         game.searchGame()
@@ -116,9 +121,11 @@ fun PlayerScreen(
                     onConnectGame = { endpoint ->
                         composableScope.launch {
                             game.connectToGame(endpoint)
+                            connecting = false
                             connected = true
-                            searching = false
                         }
+                        searching = false
+                        connecting = true
                     },
                     onJoinGame = { name ->
                         game.joinGameAs(name)
