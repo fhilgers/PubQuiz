@@ -3,9 +3,11 @@ package at.aau.appdev.g7.pubquiz.ui.screens.player
 import android.util.Log
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import at.aau.appdev.g7.pubquiz.PlayerDestination
 import at.aau.appdev.g7.pubquiz.TAG
@@ -17,6 +19,8 @@ import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
 import dev.olshevski.navigation.reimagined.replaceAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -34,6 +38,10 @@ fun PlayerScreen(
     var connected by remember {
         mutableStateOf(false)
     }
+    var searching by remember {
+        mutableStateOf(false)
+    }
+
     var gameStarting by remember {
         mutableStateOf(false)
     }
@@ -45,15 +53,30 @@ fun PlayerScreen(
         mutableStateOf(false)
     }
 
+    val endpoints = game.endpoints.collectAsState()
+
+    val composableScope = rememberCoroutineScope()
+
+
     AnimatedNavHost(controller = playerController, transitionSpec = customTransitionSpec) { destination ->
         when(destination) {
             is PlayerDestination.Start -> {
                 Log.d(TAG, "PlayerDestination.Start: game.phase=${game.phase}")
                 PlayerStart(
                     connected = connected,
+                    searching = searching,
+                    endpoints = endpoints.value.toList(),
                     onSearchGame = {
                         game.searchGame()
-                        connected = (game.phase == GamePhase.CREATED)
+                        //connected = (game.phase == GamePhase.CREATED)
+                        searching = true
+                    },
+                    onConnectGame = { endpoint ->
+                        composableScope.launch {
+                            game.connectToGame(endpoint)
+                            connected = true
+                            searching = false
+                        }
                     },
                     onJoinGame = { name ->
                         game.joinGameAs(name)

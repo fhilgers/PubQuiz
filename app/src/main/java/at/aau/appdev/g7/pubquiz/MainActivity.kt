@@ -27,10 +27,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -68,6 +70,7 @@ import dev.olshevski.navigation.reimagined.pop
 import dev.olshevski.navigation.reimagined.popAll
 import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
+import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
 const val TAG = "PubQuiz"
@@ -444,6 +447,9 @@ fun MasterScreen(
                 Log.d(TAG, "MasterScreen: MasterDestination.Lobby")
                 showBottomNavigation(false)
 
+                val initCons = game.connectivityProvider.initiatedConnections.collectAsState()
+                val scope = rememberCoroutineScope()
+
                 MasterLobby(
                     players = players,
                     password = "456048",
@@ -457,7 +463,13 @@ fun MasterScreen(
                     onStart = {
                         game.forceStartGame()
                         masterController.navigate(MasterDestination.Rounds(destination.gameIndex))
-                    }
+                    },
+                    connectionRequests = initCons.value.toList(),
+                    onConnectionAccept = { id ->
+                        scope.launch {
+                            game.acceptConnection(id)
+                        }
+                    },
                 )
             }
 

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBarDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,9 +53,11 @@ data class Player(val name: String, val ready: Boolean) : Parcelable
 fun MasterLobby(
     players: List<Player>,
     password: String,
+    connectionRequests: List<String>,
     onClose: () -> Unit,
     onReady: () -> Unit,
     onStart: () -> Unit,
+    onConnectionAccept: (id: String) -> Unit,
 ) {
     var showCloseDialog by remember {
         mutableStateOf(false)
@@ -183,6 +186,14 @@ fun MasterLobby(
                 }
             }
 
+            Column{
+                connectionRequests.forEach {
+                    Button(onClick = { onConnectionAccept(it) }) {
+                        Text(text = it)
+                    }
+                }
+            }
+
             LazyColumn(
                 contentPadding = PaddingValues(vertical = 16.dp)
             ) {
@@ -239,7 +250,9 @@ fun LobbyPreview() {
             password = "456048",
             onClose = {},
             onReady = {},
-            onStart = {}
+            onStart = {},
+            onConnectionAccept = {},
+            connectionRequests = listOf("123", "456")
         )
     }
 }

@@ -64,12 +64,6 @@ class MasterDemoConnectivitySimulator(
 
         // Only give one dummy connection which schedules the simulation messages
         _initiatedConnections.emit(setOf("player"))
-
-        for (player in PLAYERS) {
-            schedule(Random.nextInt(2, 2 + PLAYERS.size)) {
-                simulateData(GameMessage(PLAYER_JOIN, player))
-            }
-        }
     }
 
     override suspend fun discover() {
@@ -84,6 +78,14 @@ class MasterDemoConnectivitySimulator(
 
     override suspend fun accept(endpointId: String): ConnectionProvider<GameMessage> {
         Log.i(TAG, "accept")
+
+        _initiatedConnections.emit(setOf())
+
+        for (player in PLAYERS) {
+            schedule(Random.nextInt(2, 2 + PLAYERS.size)) {
+                simulateData(GameMessage(PLAYER_JOIN, player))
+            }
+        }
 
         return Connection(this)
     }

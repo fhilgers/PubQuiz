@@ -224,6 +224,8 @@ class NearbyConnectivityProvider<M: ProtocolMessage>(context: Context) : Connect
                 }
         }
 
+        connected.first { it }
+
         return NearbyConnection(
             protocol,
             messages.asSharedFlow(),
@@ -325,6 +327,8 @@ class NearbyConnectivityProvider<M: ProtocolMessage>(context: Context) : Connect
                     continuation.resumeWithException(it)
                 }
         }
+
+        connected.first { it }
 
         return NearbyConnection(
             protocol,
