@@ -157,7 +157,7 @@ class GameTest {
     @Test
     fun simpleSimulation() = runBlocking {
         // 1
-        master.setupGame(2, 3, 4)
+        master.setupGame(2, 3, 4, 15)
         assertEquals(2, master.roundNames.size)
 
         master.createGame()
