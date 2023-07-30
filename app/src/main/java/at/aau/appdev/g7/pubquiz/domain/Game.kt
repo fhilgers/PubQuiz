@@ -11,6 +11,7 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolException
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.first
@@ -28,6 +29,8 @@ class Game(
     private lateinit var rounds: MutableList<Round>
     var phase = INIT
         private set
+
+    private var connectionScope = CoroutineScope(Dispatchers.IO)
 
     lateinit var playerName: String
 
@@ -163,6 +166,18 @@ class Game(
     }
 
     /**
+     * 0. When I close a lobby I want to be able to host a new one
+     */
+    fun reset() {
+        phase = INIT
+        rounds = mutableListOf()
+        currentRoundIdx = -1
+        currentQuestionIdx = -1
+        players.clear()
+        connectionScope.cancel()
+    }
+
+    /**
      * 1. As a Master, I can set up a new pub quiz session
      */
     fun setupGame(numberOfRounds: Int, questionsPerRound: Int, answersPerQuestion: Int) {
@@ -187,7 +202,7 @@ class Game(
         expectPhase(SETUP, "create game")
 
         // TODO advertise game, wait for players
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connectivityProvider.advertise()
         }
 
@@ -219,7 +234,7 @@ class Game(
         expectPhase(INIT, "search game")
         // TODO search game, after game is found, join game.
 
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connectivityProvider.discover()
         }
 
@@ -233,7 +248,7 @@ class Game(
 
         val connection = connectivityProvider.connect(serverId)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connection.messages.collect { message ->
                 onReceiveData(message)
             }
@@ -251,7 +266,7 @@ class Game(
 
         val connection = connectivityProvider.accept(clientId)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        connectionScope.launch {
             connection.messages.collect { message ->
                 onReceiveData(message)
             }

@@ -27,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -74,7 +75,7 @@ import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
 const val TAG = "PubQuiz"
-const val DEMO_MODE = true
+const val DEMO_MODE = false
 
 class MainActivity : ComponentActivity() {
     lateinit var connectivityProvider: ConnectivityProvider<GameMessage>
@@ -236,25 +237,35 @@ fun NavHostScreen(
         mutableStateOf(true)
     }
 
-    var game: Game? by remember {
-        mutableStateOf(null)
-    }
+    val lastDestination = navController.backstack.entries.lastOrNull()?.destination
+
+    Log.d(TAG, "NavHostScreen: lastDestination: $lastDestination")
+    val game = when (lastDestination) {
+
+            BottomDestination.Player -> {
+                onUserRoleChosen(UserRole.PLAYER)
+            }
+
+            BottomDestination.Master -> {
+                onUserRoleChosen(UserRole.MASTER)
+            }
+
+            null -> {
+                null
+            }
+        }
+
 
     Scaffold(
         bottomBar = {
             AnimatedVisibility(visible = showBottomNavigation) {
                 NavigationBar {
-                    val lastDestination = navController.backstack.entries.lastOrNull()?.destination
 
                     BottomDestination.values().forEach { destination ->
                         NavigationBarItem(
                             selected = destination == lastDestination,
                             onClick = {
                                 if (!navController.moveToTop { it == destination }) {
-                                    game = onUserRoleChosen.invoke(when (destination) {
-                                        BottomDestination.Player -> UserRole.PLAYER
-                                        BottomDestination.Master -> UserRole.MASTER
-                                    })
                                     navController.navigate(destination)
                                 }
 
@@ -276,6 +287,8 @@ fun NavHostScreen(
                 when (destination) {
                     BottomDestination.Player -> {
                         showBottomNavigation = false
+
+
                         PlayerScreen(
                             game = game!!,
                             onRestart = {
@@ -454,6 +467,7 @@ fun MasterScreen(
                     players = players,
                     password = "456048",
                     onClose = {
+                        game.reset()
                         masterController.popUpTo { it == MasterDestination.Start }
                     },
                     onReady = {

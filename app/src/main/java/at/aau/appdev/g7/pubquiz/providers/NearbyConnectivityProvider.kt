@@ -146,9 +146,12 @@ class NearbyConnectivityProvider<M: ProtocolMessage>(context: Context) : Connect
                     }
             }
 
+            Log.d(TAG, "discovery started")
+
             awaitCancellation()
         } finally {
             connectionsClient.stopDiscovery()
+            Log.d(TAG, "discovery stopped")
         }
     }
 
@@ -280,9 +283,12 @@ class NearbyConnectivityProvider<M: ProtocolMessage>(context: Context) : Connect
                     }
             }
 
+            Log.d(TAG, "advertising started")
+
             awaitCancellation()
         } finally {
             connectionsClient.stopDiscovery()
+            Log.d(TAG, "advertising stopped")
         }
     }
 
