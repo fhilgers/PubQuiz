@@ -73,39 +73,6 @@ class Game(
 
     init {
         connectivityProvider.protocol = GameProtocol()
-
-        CoroutineScope(Dispatchers.IO).launch {
-            launch {
-                when (userRole) {
-                    PLAYER -> {
-                    }
-
-                    MASTER -> {
-                        val seenIds = mutableSetOf<String>()
-
-                        connectivityProvider.initiatedConnections.filterNot {
-                            seenIds.containsAll(it)
-                        }.collect {
-
-                            it.filterNot { seenIds.contains(it) }.forEach {
-                                val connection = connectivityProvider.accept(it)
-
-                                launch {
-                                    connection.messages.collect { message ->
-                                        onReceiveData(message)
-                                    }
-                                }
-
-                                connections.add(connection)
-                            }
-
-                            seenIds.addAll(it)
-                        }
-                    }
-                }
-
-            }
-        }
     }
 
     private fun identifyPlayer(message: GameMessage): Player {
@@ -253,7 +220,6 @@ class Game(
         // TODO search game, after game is found, join game.
 
         CoroutineScope(Dispatchers.IO).launch {
-
             connectivityProvider.discover()
         }
 
@@ -266,6 +232,24 @@ class Game(
 
 
         val connection = connectivityProvider.connect(serverId)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            connection.messages.collect { message ->
+                onReceiveData(message)
+            }
+        }
+
+        connections.add(connection)
+
+        // TODO define phase
+    }
+
+    suspend fun acceptConnection(clientId: String) {
+        expectRole(MASTER, "accept connection")
+        expectPhase(CREATED, "accept connection")
+
+
+        val connection = connectivityProvider.accept(clientId)
 
         CoroutineScope(Dispatchers.IO).launch {
             connection.messages.collect { message ->
