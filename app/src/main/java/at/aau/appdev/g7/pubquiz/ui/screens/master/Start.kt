@@ -33,14 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-
-data class GameConfiguration(
-    val name: String,
-    val numberOfRounds: Int,
-    val numberOfQuestions: Int,
-    val numberOfAnswers: Int,
-    val timePerQuestion: Int
-)
+import at.aau.appdev.g7.pubquiz.domain.GameConfiguration
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

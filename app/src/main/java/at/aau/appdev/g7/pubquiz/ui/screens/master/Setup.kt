@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import at.aau.appdev.g7.pubquiz.domain.GameConfiguration
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -66,6 +67,8 @@ fun MasterSetup(
                 TextButton(onClick = {
                     onCreate(
                         GameConfiguration(
+                            id = initialGameConfiguration.id,
+                            timestamp = initialGameConfiguration.timestamp,
                             name = name,
                             numberOfRounds = numberOfRounds.roundToInt(),
                             numberOfQuestions = numberOfQuestions.roundToInt(),
