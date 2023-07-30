@@ -143,6 +143,10 @@ class PlayerDemoConnectivitySimulator(
                 }
 
                 GAME_OVER -> {}
+                TIMER_STARTED -> {}
+                TIMER_PAUSED -> {}
+                TIMER_RESUMED -> {}
+                TIMER_ENDED -> {}
             }
         }
         override suspend fun close() {

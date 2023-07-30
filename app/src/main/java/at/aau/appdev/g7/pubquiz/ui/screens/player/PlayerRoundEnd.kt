@@ -28,6 +28,7 @@ import at.aau.appdev.g7.pubquiz.ui.components.AnswerButton
 fun PlayerRoundEnd(
     roundName: String,
     submitted: Boolean,
+    time: Int,
     questions: List<Question>,
     selectedAnswers: List<String>,
     onAnswerChanged: (Int, String) -> Unit,
@@ -53,6 +54,7 @@ fun PlayerRoundEnd(
             verticalArrangement = Arrangement.spacedBy(40.dp, Alignment.CenterVertically)
         ) {
             Text("$roundName is about to end...")
+            Text("Remaining time: $time seconds")
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 40.dp),
                 color = Color.Red,
@@ -100,6 +102,7 @@ fun PlayerRoundEndPreview() {
         selectedAnswers = listOf("A", "B", "C", "D", "A"),
         onAnswerChanged = { _, _ -> },
         onSubmit = {},
-        submitted = false
+        submitted = false,
+        time = 60,
     )
 }

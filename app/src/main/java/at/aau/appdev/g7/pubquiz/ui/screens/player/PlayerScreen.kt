@@ -103,6 +103,7 @@ fun PlayerScreen(
         )
     }
 
+    val time = game.timer.collectAsState()
 
     AnimatedNavHost(controller = playerController, transitionSpec = customTransitionSpec) { destination ->
         when(destination) {
@@ -174,7 +175,7 @@ fun PlayerScreen(
                     questionText = game.currentQuestion.text,
                     answers = game.currentQuestion.answers,
                     selectedAnswer = selectedAnswers[index],
-                    time = game.currentQuestion.time,
+                    time = time.value,
                     onAnswer = { answer ->
                         game.answerQuestion(answer)
                         selectedAnswers = game.currentRound.answers.toList()
@@ -191,7 +192,8 @@ fun PlayerScreen(
                     onAnswerChanged = { index, answer ->
                         game.answerQuestion(answer, index)
                         selectedAnswers = game.currentRound.answers.toList()
-                    }
+                    },
+                    time = time.value,
                 ) {
                     game.submitRoundAnswers()
                     roundSubmitted = true

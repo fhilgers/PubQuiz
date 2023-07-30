@@ -151,6 +151,10 @@ class MasterDemoConnectivitySimulator(
                 ANSWER -> {}
                 SUBMIT_ROUND -> {}
                 GAME_OVER -> {}
+                TIMER_STARTED -> {}
+                TIMER_PAUSED -> {}
+                TIMER_RESUMED -> {}
+                TIMER_ENDED -> {}
             }
         }
 
