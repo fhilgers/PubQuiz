@@ -13,9 +13,12 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNot
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -61,7 +64,7 @@ class Game(
         get() = currentQuestionIdx < currentRound.questions.size - 1
 
     // Master UI events
-    var onConnectionRequest: (player: String) -> Unit = {}
+    var onConnectionRequestFlow: Flow<String>
     var onPlayerJoined: (player: String) -> Unit = {}
     var onPlayerLeft: (player: String) -> Unit = {}
     var onPlayerReady: (player: String) -> Unit = {}
@@ -80,14 +83,16 @@ class Game(
     init {
         connectivityProvider.protocol = GameProtocol()
 
-        connectivityProvider.initiatedConnections
-            .onEach { playerIds ->
-                playerIds.minus(connections.keys).forEach {playerId ->
-                    Log.d("MYCUSTOMLOG", "New connection: $playerId")
-                    onConnectionRequest(playerId)
-                }
-            }
-            .launchIn(connectionScope)
+        onConnectionRequestFlow = flow {
+            connectivityProvider.initiatedConnections
+                .onEach { playerIds ->
+                    playerIds.minus(connections.keys).forEach {playerId ->
+                        Log.d("MYCUSTOMLOG", "New connection: $playerId")
+                        emit(playerId)
+                    }
+                }.collect()
+        }
+
     }
 
     private fun identifyPlayer(message: GameMessage): Player {

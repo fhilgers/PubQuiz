@@ -70,12 +70,15 @@ import dev.olshevski.navigation.reimagined.pop
 import dev.olshevski.navigation.reimagined.popAll
 import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 import java.lang.RuntimeException
 
 const val TAG = "PubQuiz"
-const val DEMO_MODE = false
+const val DEMO_MODE = true
 
 class MainActivity : ComponentActivity() {
     lateinit var connectivityProvider: ConnectivityProvider<GameMessage>
@@ -96,13 +99,14 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
 
-                    val permissions = rememberMultiplePermissionsState(permissions = nearbyProviderPermissions)
+                    val permissions =
+                        rememberMultiplePermissionsState(permissions = nearbyProviderPermissions)
 
                     if (permissions.allPermissionsGranted || DEMO_MODE) {
                         NavHostScreen(onUserRoleChosen = {
                             // TODO replace these provider stubs with real ones as soon as they are implemented
                             connectivityProvider = if (DEMO_MODE) {
-                                when(it) {
+                                when (it) {
                                     UserRole.PLAYER -> PlayerDemoConnectivitySimulator()
                                     UserRole.MASTER -> MasterDemoConnectivitySimulator()
                                 }
@@ -113,7 +117,7 @@ class MainActivity : ComponentActivity() {
                             game
                         })
                     } else {
-                        Button(onClick = { permissions.launchMultiplePermissionRequest()}) {
+                        Button(onClick = { permissions.launchMultiplePermissionRequest() }) {
                             Text("Grant permissions")
                         }
                     }
@@ -155,11 +159,12 @@ sealed class PlayerDestination : Parcelable {
 
     @Parcelize
     object Lobby : PlayerDestination()
+
     @Parcelize
     object RoundStart : PlayerDestination()
 
     @Parcelize
-    data class Question(val index: Int): PlayerDestination()
+    data class Question(val index: Int) : PlayerDestination()
 
     @Parcelize
     object RoundEnd : PlayerDestination()
@@ -249,23 +254,24 @@ fun NavHostScreen(
             AnimatedVisibility(visible = showBottomNavigation) {
                 NavigationBar {
 
-                    BottomDestination.values().filterNot { it == BottomDestination.None }.forEach { destination ->
-                        NavigationBarItem(
-                            selected = destination == lastDestination,
-                            onClick = {
-                                if (!navController.moveToTop { it == destination }) {
-                                    navController.navigate(destination)
-                                }
+                    BottomDestination.values().filterNot { it == BottomDestination.None }
+                        .forEach { destination ->
+                            NavigationBarItem(
+                                selected = destination == lastDestination,
+                                onClick = {
+                                    if (!navController.moveToTop { it == destination }) {
+                                        navController.navigate(destination)
+                                    }
 
-                            },
-                            icon = {
-                                Icon(
-                                    destination.icon,
-                                    contentDescription = destination.title
-                                )
-                            },
-                            label = { Text(text = destination.title) })
-                    }
+                                },
+                                icon = {
+                                    Icon(
+                                        destination.icon,
+                                        contentDescription = destination.title
+                                    )
+                                },
+                                label = { Text(text = destination.title) })
+                        }
                 }
             }
         }
@@ -447,7 +453,7 @@ fun MasterScreen(
                 val initCons = game.connectivityProvider.initiatedConnections.collectAsState()
                 val scope = rememberCoroutineScope()
 
-                MasterLobby(
+                    MasterLobby(
                     players = players,
                     password = "456048",
                     onClose = {
@@ -462,7 +468,7 @@ fun MasterScreen(
                         game.forceStartGame()
                         masterController.navigate(MasterDestination.Rounds(destination.gameIndex))
                     },
-                    connectionRequests = initCons.value.toList(),
+                    connectionRequests = game.onConnectionRequestFlow,
                     onConnectionAccept = { id ->
                         scope.launch {
                             game.acceptConnection(id)
@@ -536,9 +542,14 @@ fun MasterScreen(
                                 masterController.navigate(MasterDestination.RoundEnd(destination.gameIndex))
                             } else {
                                 currentQuestion++
-                                masterController.popUpTo { it == MasterDestination.Questions(destination.gameIndex) }
+                                masterController.popUpTo {
+                                    it == MasterDestination.Questions(
+                                        destination.gameIndex
+                                    )
+                                }
                             }
-                        } },
+                        }
+                    },
                     timerStarted = timerStarted,
                     onStartTimer = { timerStarted = true },
                     onPauseTimer = { timerStarted = false },
@@ -573,9 +584,14 @@ fun MasterScreen(
                             } else {
                                 currentQuestion = 0
                                 currentRound++
-                                masterController.popUpTo { it == MasterDestination.Rounds(destination.gameIndex) }
+                                masterController.popUpTo {
+                                    it == MasterDestination.Rounds(
+                                        destination.gameIndex
+                                    )
+                                }
                             }
-                        } },
+                        }
+                    },
                     timerStarted = timerStarted,
                     onStartTimer = { timerStarted = true },
                     onPauseTimer = { timerStarted = false },
