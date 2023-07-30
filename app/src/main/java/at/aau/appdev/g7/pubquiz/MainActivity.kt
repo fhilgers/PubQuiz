@@ -289,12 +289,12 @@ fun NavHostScreen(
                         PlayerScreen(
                             game = game,
                             onRestart = {
-                                showBottomNavigation = true
-                                navController.popAll()
+                                game.reset()
+                                navController.popUpTo { destination -> destination == BottomDestination.None }
                             },
                             onClose = {
                                 game.reset()
-                                navController.navigate(BottomDestination.None)
+                                navController.popUpTo { destination -> destination == BottomDestination.None }
                             }
                         )
                     }
@@ -414,6 +414,22 @@ fun MasterScreen(
                         }
                         Log.d(TAG, "MasterScreen: player $p submit round")
                     }
+                    game.onNavigateRounds = {roundIndex ->
+                        currentQuestion = 0
+                        currentRound = roundIndex
+                        masterController.navigate(MasterDestination.Rounds(it))
+                    }
+                    game.onNavigateQuestions = {questionIndex ->
+                        currentQuestion = questionIndex
+                        masterController.navigate(MasterDestination.Questions(it))
+                    }
+                    game.onNavigateRoundEnd = {
+                        playerAnswers = game.players.values.map { PlayerAnswer(it.name) }
+                        masterController.navigate(MasterDestination.RoundEnd(it))
+                    }
+                    game.onNavigateStart = {
+                        masterController.popUpTo { destination -> destination == MasterDestination.Start }
+                    }
                     masterController.navigate(MasterDestination.Lobby(it))
                 })
             }
@@ -450,7 +466,7 @@ fun MasterScreen(
                 Log.d(TAG, "MasterScreen: MasterDestination.Lobby")
                 showBottomNavigation(false)
 
-                val initCons = game.connectivityProvider.initiatedConnections.collectAsState()
+                game.connectivityProvider.initiatedConnections.collectAsState()
                 val scope = rememberCoroutineScope()
 
                     MasterLobby(
@@ -500,12 +516,13 @@ fun MasterScreen(
 
                 MasterQuestionsScreen(
                     questions = questions,
-                    nextQuestion = game.currentQuestionIdx + 1
-                ) {
-                    game.startNextQuestion()
-                    playerAnswers = game.players.values.map { PlayerAnswer(it.name) }
-                    masterController.navigate(MasterDestination.Answers(destination.gameIndex))
-                }
+                    nextQuestion = game.currentQuestionIdx + 1,
+                    onNextQuestionStart = {
+                        game.startNextQuestion()
+                        playerAnswers = game.players.values.map { PlayerAnswer(it.name) }
+                        masterController.navigate(MasterDestination.Answers(destination.gameIndex))
+                    }
+                )
             }
 
             is MasterDestination.Answers -> {
@@ -519,87 +536,53 @@ fun MasterScreen(
 
             is MasterDestination.AnswerTimer -> {
                 showBottomNavigation(false)
-                // TODO we should consider to move timer functionality to the game class
-                var ticks by remember {
-                    mutableIntStateOf(0)
-                }
+                
                 val time = configuredGames[destination.gameIndex].timePerQuestion
-                var timerStarted by remember {
-                    mutableStateOf(false)
-                }
+
+                val timer = game.timer.collectAsState(initial = time)
+                val timerState = game.timerState.collectAsState()
+
 
                 MasterAnswerTimerScreen(
                     title = game.currentQuestion.text,
-                    maxTicks = time,
-                    ticks = ticks,
+                    remainingTime = timer.value,
                     playerAnswers = playerAnswers,
-                    onTick = {
-                        ticks++
-                        if (ticks >= time) {
-                            if (currentQuestion == configuredGames[destination.gameIndex].numberOfQuestions - 1) {
-                                playerAnswers = game.players.values.map { PlayerAnswer(it.name) }
-                                game.endRound()
-                                masterController.navigate(MasterDestination.RoundEnd(destination.gameIndex))
-                            } else {
-                                currentQuestion++
-                                masterController.popUpTo {
-                                    it == MasterDestination.Questions(
-                                        destination.gameIndex
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    timerStarted = timerStarted,
-                    onStartTimer = { timerStarted = true },
-                    onPauseTimer = { timerStarted = false },
-                    onSkipTimer = {
-                        ticks = time
-                        timerStarted = true
-                    })
+                    timerStarted = timerState.value == Game.TimerState.STARTED,
+                    onStartTimer = {
+                        when (timerState.value) {
+                            Game.TimerState.STARTED -> {}
+                            Game.TimerState.PAUSED -> game.resumeTimer()
+                            Game.TimerState.ENDED -> game.startTimer()
+                        } },
+                    onPauseTimer = { game.pauseTimer() },
+                    onSkipTimer = { game.skipTimer() },
+                )
             }
 
             is MasterDestination.RoundEnd -> {
                 showBottomNavigation(false)
-                // TODO
-                var ticks by remember {
-                    mutableIntStateOf(0)
-                }
+
                 val timeout = configuredGames[destination.gameIndex].timePerQuestion
-                var timerStarted by remember {
-                    mutableStateOf(true)
-                }
+
+                val timer = game.timer.collectAsState(initial = timeout)
+                val timerState = game.timerState.collectAsState()
 
                 MasterAnswerTimerScreen(
                     title = game.currentRound.name,
-                    maxTicks = timeout,
-                    ticks = ticks,
+                    remainingTime = timer.value,
                     playerAnswers = playerAnswers,
-                    onTick = {
-                        ticks++
-                        if (ticks >= timeout) {
-                            if (currentRound == configuredGames[destination.gameIndex].numberOfRounds - 1) {
-                                masterController.popUpTo { it == MasterDestination.Start }
-                                // TODO game finished
-                            } else {
-                                currentQuestion = 0
-                                currentRound++
-                                masterController.popUpTo {
-                                    it == MasterDestination.Rounds(
-                                        destination.gameIndex
-                                    )
-                                }
-                            }
-                        }
-                    },
-                    timerStarted = timerStarted,
-                    onStartTimer = { timerStarted = true },
-                    onPauseTimer = { timerStarted = false },
+                    timerStarted = timerState.value == Game.TimerState.STARTED,
+                    onStartTimer = {
+                        when (timerState.value) {
+                            Game.TimerState.STARTED -> {}
+                            Game.TimerState.PAUSED -> game.resumeTimer()
+                            Game.TimerState.ENDED -> game.startTimer()
+                        } },
+                    onPauseTimer = { game.pauseTimer() },
                     onSkipTimer = {
-                        ticks = timeout
-                        timerStarted = true
-                    })
-
+                        game.skipTimer()
+                    }
+                    )
             }
         }
     }

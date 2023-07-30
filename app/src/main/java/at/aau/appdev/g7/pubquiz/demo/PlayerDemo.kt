@@ -85,7 +85,8 @@ class PlayerDemoConnectivitySimulator(
                             GameMessage(
                                 QUESTION,
                                 "Question ${simulator.questionIdx}",
-                                listOf("A", "B", "C", "D")
+                                listOf("A", "B", "C", "D"),
+                                60
                             )
                         )
                     }
@@ -106,7 +107,8 @@ class PlayerDemoConnectivitySimulator(
                                 GameMessage(
                                     QUESTION,
                                     "Question ${simulator.questionIdx}",
-                                    listOf("A", "B", "C", "D")
+                                    listOf("A", "B", "C", "D"),
+                                    60
                                 )
                             )
                         }
@@ -132,7 +134,8 @@ class PlayerDemoConnectivitySimulator(
                                 GameMessage(
                                     QUESTION,
                                     "Question ${simulator.questionIdx}",
-                                    listOf("A", "B", "C", "D")
+                                    listOf("A", "B", "C", "D"),
+                                    60
                                 )
                             )
                         }

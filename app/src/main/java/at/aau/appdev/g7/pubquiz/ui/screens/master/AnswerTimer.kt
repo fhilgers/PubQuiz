@@ -44,10 +44,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +61,13 @@ import at.aau.appdev.g7.pubquiz.ui.components.HandleUnimplementedBackNavigation
 import at.aau.appdev.g7.pubquiz.ui.components.PlayerAvatar
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.parcelize.Parcelize
 import kotlin.time.Duration.Companion.seconds
 
@@ -69,10 +78,8 @@ data class PlayerAnswer(val from: String, val answered: Boolean = false): Parcel
 @Composable
 fun MasterAnswerTimerScreen(
     title: String,
-    maxTicks: Int,
-    ticks: Int,
+    remainingTime: Int,
     playerAnswers: List<PlayerAnswer>,
-    onTick: () -> Unit,
     timerStarted: Boolean,
     onStartTimer: () -> Unit,
     onPauseTimer: () -> Unit,
@@ -82,14 +89,6 @@ fun MasterAnswerTimerScreen(
 
     HandleUnimplementedBackNavigation()
 
-    LaunchedEffect(timerStarted) {
-        if (timerStarted) {
-            while (true) {
-                delay(1.seconds)
-                onTick()
-            }
-        }
-    }
     val titleSuffix = if (timerStarted) "Timer running" else "Timer stopped"
     Scaffold(
         floatingActionButtonPosition = FabPosition.End,
@@ -138,7 +137,7 @@ fun MasterAnswerTimerScreen(
                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(text = "${ticks}s / ${maxTicks}s", style = MaterialTheme.typography.headlineSmall)
+                    Text(text = "$remainingTime seconds remaining", style = MaterialTheme.typography.headlineSmall)
                     // ExtendedFloatingActionButton(onClick = { if (it) onPauseTimer() else onStartTimer() }) {
                     //                        Text(text = if (timerStarted) "Pause Timer" else "Start Timer")
                     //                }
@@ -201,41 +200,32 @@ val fabTransitionSpec: AnimatedContentTransitionScope<Boolean>.() -> ContentTran
 @Preview
 @Composable
 fun MasterAnswerTimerScreenPreview() {
-    var timerStarted by remember {
-        mutableStateOf(false)
-    }
-    var ticks by remember {
-        mutableStateOf(0)
-    }
+    val paused = MutableStateFlow(false)
+    val ticks by flow {
+        for (i in 15 downTo 0) {
+            paused.first { !it }
+
+            emit(i)
+            delay(1000)
+        }
+    }.collectAsState(initial = 15)
+
+    val pausedState = paused.collectAsState(initial = true )
+
     val playerAnswers by remember {
         mutableStateOf(listOf(
             PlayerAnswer("Hans Peter"),
             PlayerAnswer("Manfred Emmerich", true)
         ))
     }
-    val maxTicks = 15
     PubQuizTheme {
         MasterAnswerTimerScreen(
             title = "Question 1",
-            timerStarted = timerStarted,
-            onStartTimer = { timerStarted = true },
-            onPauseTimer = { timerStarted = false },
-            onSkipTimer = { ticks = maxTicks },
-            ticks = ticks,
-            onTick = {
-                if (ticks == maxTicks) {
-                    timerStarted = false
-                    return@MasterAnswerTimerScreen
-                }
-                ticks++
-//            if (ticks == 3) {
-//                playerAnswers[0] = playerAnswers.copy {.answered = true}
-//            }
-//            if (ticks == 10) {
-//                playerAnswers[1].answer = 4
-//            }
-            },
-            maxTicks = maxTicks,
+            timerStarted = !pausedState.value,
+            onStartTimer = { paused.value = false },
+            onPauseTimer = { paused.value = true },
+            onSkipTimer = { },
+            remainingTime = ticks,
             playerAnswers = playerAnswers)
     }
 }

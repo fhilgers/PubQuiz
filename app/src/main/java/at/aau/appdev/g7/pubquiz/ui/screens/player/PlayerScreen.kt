@@ -174,6 +174,7 @@ fun PlayerScreen(
                     questionText = game.currentQuestion.text,
                     answers = game.currentQuestion.answers,
                     selectedAnswer = selectedAnswers[index],
+                    time = game.currentQuestion.time,
                     onAnswer = { answer ->
                         game.answerQuestion(answer)
                         selectedAnswers = game.currentRound.answers.toList()

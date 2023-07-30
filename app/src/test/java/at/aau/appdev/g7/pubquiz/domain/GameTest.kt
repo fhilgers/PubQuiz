@@ -228,7 +228,7 @@ class GameTest {
             while (master.hasNextQuestion) {
                 // 10
                 master.startNextQuestion()
-                
+
                 //13
                 master.selectCorrectAnswer(master.currentQuestion.answers.random())
 

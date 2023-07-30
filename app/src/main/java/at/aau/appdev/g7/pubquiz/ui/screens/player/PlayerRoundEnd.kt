@@ -96,7 +96,7 @@ fun PlayerRoundEndPreview() {
     PlayerRoundEnd(
         roundName = "Round 1",
         questions = (1..5).map {
-            Question(it, "Question $it", listOf("A", "B", "C", "D")) },
+            Question(it, "Question $it", listOf("A", "B", "C", "D"), 120) },
         selectedAnswers = listOf("A", "B", "C", "D", "A"),
         onAnswerChanged = { _, _ -> },
         onSubmit = {},
