@@ -3,7 +3,7 @@ name: Push and Release
 on:
   workflow_dispatch:
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   build:
