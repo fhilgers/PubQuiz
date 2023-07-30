@@ -347,9 +347,9 @@ fun MasterScreen(
                         list.removeAt(it)
                     }
                 }, onHost = {
-                    val c = configuredGames[it]
-                    game.setupGame(c.numberOfRounds, c.numberOfQuestions, c.numberOfAnswers)
-                    Log.d(TAG, "MasterScreen: game setup: $c -> ${game.phase}")
+                    val configuration = configuredGames[it]
+                    game.setupGame(configuration)
+                    Log.d(TAG, "MasterScreen: game setup: $configuration -> ${game.phase}")
                     game.createGame()
                     Log.d(TAG, "MasterScreen: game created: ${game.phase}")
                     game.onPlayerJoined = { p ->
