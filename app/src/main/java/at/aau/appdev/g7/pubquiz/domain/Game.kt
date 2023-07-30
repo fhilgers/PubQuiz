@@ -20,18 +20,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.EnumSet
 
-class Game (
+class Game(
     val userRole: UserRole,
     val connectivityProvider: ConnectivityProvider<GameMessage>,
     val dataProvider: DataProvider
-    ) {
+) {
     private lateinit var rounds: MutableList<Round>
     var phase = INIT
         private set
 
     lateinit var playerName: String
 
-    val players = mutableMapOf<String,Player>()
+    val players = mutableMapOf<String, Player>()
+
+    val endpoints = connectivityProvider.discoveredEndpoints
 
     var currentRoundIdx = -1
         private set
@@ -76,20 +78,8 @@ class Game (
             launch {
                 when (userRole) {
                     PLAYER -> {
-                        val serverId = connectivityProvider.discoveredEndpoints.first {
-                            it.isNotEmpty()
-                        }.first()
-
-                        val connection = connectivityProvider.connect(serverId)
-
-                        launch {
-                            connection.messages.collect { message ->
-                                onReceiveData(message)
-                            }
-                        }
-
-                        connections.add(connection)
                     }
+
                     MASTER -> {
                         val seenIds = mutableSetOf<String>()
 
@@ -97,7 +87,7 @@ class Game (
                             seenIds.containsAll(it)
                         }.collect {
 
-                            it.filterNot{seenIds.contains(it)}.forEach {
+                            it.filterNot { seenIds.contains(it) }.forEach {
                                 val connection = connectivityProvider.accept(it)
 
                                 launch {
@@ -118,9 +108,10 @@ class Game (
         }
     }
 
-    private fun identifyPlayer(message: GameMessage) : Player {
+    private fun identifyPlayer(message: GameMessage): Player {
         return players[message.name] ?: throw ProtocolException("Invalid player: ${message.name}")
     }
+
     private fun onReceiveData(message: GameMessage) {
         when (message.type) {
             GameMessageType.PLAYER_JOIN -> {
@@ -132,11 +123,13 @@ class Game (
                 players[name] = Player(name)
                 onPlayerJoined(name)
             }
+
             GameMessageType.PLAYER_READY -> {
                 when (userRole) {
                     PLAYER -> {
                         onGameStarting.invoke()
                     }
+
                     MASTER -> {
                         val player = identifyPlayer(message)
                         player.ready = true
@@ -147,6 +140,7 @@ class Game (
                     }
                 }
             }
+
             GameMessageType.ROUND_START -> {
                 //expect(PLAYER, READY, "on round start")
                 if (phase == READY) {
@@ -159,17 +153,26 @@ class Game (
                 rounds.add(currentRoundIdx, Round(currentRoundIdx, message.name!!))
                 onNewRoundStart.invoke()
             }
+
             GameMessageType.ROUND_END -> {
                 onRoundEnd.invoke()
             }
+
             GameMessageType.QUESTION -> {
                 // TODO expect(PLAYER, )
                 phase = QUESTION_ACTIVE
                 currentQuestionIdx++
-                currentRound.questions.add(Question(currentQuestionIdx, message.name!!, message.answers!!))
+                currentRound.questions.add(
+                    Question(
+                        currentQuestionIdx,
+                        message.name!!,
+                        message.answers!!
+                    )
+                )
                 currentRound.answers.add("")
                 onNewQuestion.invoke()
             }
+
             GameMessageType.ANSWER -> {
                 expect(MASTER, QUESTION_ACTIVE, "question answer")
                 identifyPlayer(message).answered = true
@@ -178,11 +181,13 @@ class Game (
                 }
                 onPlayerAnswer.invoke(message.name!!)
             }
+
             GameMessageType.SUBMIT_ROUND -> {
                 expectRole(MASTER, "submit round")
                 identifyPlayer(message).answersPerRound.add(message.answers!!)
                 onPlayerSubmitRound.invoke(message.name!!)
             }
+
             GameMessageType.GAME_OVER -> {
                 phase = END
                 onGameOver.invoke()
@@ -197,8 +202,8 @@ class Game (
         expectRole(MASTER, "setup game")
         expectPhase(INIT, "setup game")
 
-        rounds = (1..numberOfRounds).map {r ->
-            val questions = (1..questionsPerRound).map {q ->
+        rounds = (1..numberOfRounds).map { r ->
+            val questions = (1..questionsPerRound).map { q ->
                 val answers = 'A'.rangeTo('A'.plus(answersPerQuestion - 1))
                     .map { a -> "$a" }.toList()
                 Question(q, "Question $q", answers)
@@ -216,7 +221,7 @@ class Game (
 
         // TODO advertise game, wait for players
         CoroutineScope(Dispatchers.IO).launch {
-                connectivityProvider.advertise()
+            connectivityProvider.advertise()
         }
 
         phase = CREATED
@@ -249,10 +254,28 @@ class Game (
 
         CoroutineScope(Dispatchers.IO).launch {
 
-                connectivityProvider.discover()
+            connectivityProvider.discover()
         }
 
         phase = CREATED
+    }
+
+    suspend fun connectToGame(serverId: String) {
+        expectRole(PLAYER, "connect to game")
+        expectPhase(CREATED, "connect to game")
+
+
+        val connection = connectivityProvider.connect(serverId)
+
+        CoroutineScope(Dispatchers.IO).launch {
+            connection.messages.collect { message ->
+                onReceiveData(message)
+            }
+        }
+
+        connections.add(connection)
+
+        // TODO define phase
     }
 
     /**
@@ -338,10 +361,13 @@ class Game (
     fun submitRoundAnswers() {
         expect(PLAYER, QUESTION_ANSWERED, "submit round answers")
 
-        sendToMaster(GameMessage(
-            GameMessageType.SUBMIT_ROUND,
-            playerName,
-            rounds[currentRoundIdx].answers))
+        sendToMaster(
+            GameMessage(
+                GameMessageType.SUBMIT_ROUND,
+                playerName,
+                rounds[currentRoundIdx].answers
+            )
+        )
 
         phase = ROUND_ENDED
     }
@@ -395,7 +421,7 @@ class Game (
         }
     }
 
-    private fun anyOf(vararg phases: GamePhase) : EnumSet<GamePhase> {
+    private fun anyOf(vararg phases: GamePhase): EnumSet<GamePhase> {
         val set = EnumSet.noneOf(GamePhase::class.java)
         phases.forEach { set.add(it) }
         return set
@@ -434,7 +460,8 @@ enum class GamePhase {
 data class GameMessage(
     val type: GameMessageType,
     val name: String? = null,
-    val answers: List<String>? = null) : ProtocolMessage
+    val answers: List<String>? = null
+) : ProtocolMessage
 
 enum class GameMessageType {
     PLAYER_JOIN,
@@ -447,10 +474,11 @@ enum class GameMessageType {
     GAME_OVER
 }
 
-class GameProtocol: ConnectivityProtocol<GameMessage> {
+class GameProtocol : ConnectivityProtocol<GameMessage> {
     companion object {
         val SEPARATOR = ';'
     }
+
     override fun serialize(data: GameMessage): String {
         var s = data.type.toString() + SEPARATOR + data.name
         data.answers?.forEach { s += SEPARATOR + it }
@@ -459,14 +487,27 @@ class GameProtocol: ConnectivityProtocol<GameMessage> {
 
     override fun deserialize(data: String): GameMessage {
         val elements = data.split(SEPARATOR)
-        return when(val type = GameMessageType.valueOf(elements[0])) {
+        return when (val type = GameMessageType.valueOf(elements[0])) {
             GameMessageType.PLAYER_JOIN -> GameMessage(type, elements[1])
-            GameMessageType.PLAYER_READY -> GameMessage(type, if (elements.size > 1) elements[1] else null)
+            GameMessageType.PLAYER_READY -> GameMessage(
+                type,
+                if (elements.size > 1) elements[1] else null
+            )
+
             GameMessageType.ROUND_START -> GameMessage(type, elements[1])
             GameMessageType.ROUND_END -> GameMessage(type, elements[1])
-            GameMessageType.QUESTION -> GameMessage(type, elements[1], elements.subList(2, elements.size))
+            GameMessageType.QUESTION -> GameMessage(
+                type,
+                elements[1],
+                elements.subList(2, elements.size)
+            )
+
             GameMessageType.ANSWER -> GameMessage(type, elements[1])
-            GameMessageType.SUBMIT_ROUND -> GameMessage(type, elements[1], elements.subList(2, elements.size))
+            GameMessageType.SUBMIT_ROUND -> GameMessage(
+                type,
+                elements[1],
+                elements.subList(2, elements.size)
+            )
 
             else -> GameMessage(
                 type = type,
@@ -488,7 +529,8 @@ data class Round(
 data class Question(
     val index: Int,
     val text: String,
-    val answers: List<String>)
+    val answers: List<String>
+)
 
 data class Player(val name: String) {
     val answersPerRound: MutableList<List<String>> = mutableListOf()

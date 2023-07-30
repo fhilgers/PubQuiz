@@ -71,7 +71,7 @@ import dev.olshevski.navigation.reimagined.rememberNavController
 import kotlinx.parcelize.Parcelize
 
 const val TAG = "PubQuiz"
-const val DEMO_MODE = true
+const val DEMO_MODE = false
 
 class MainActivity : ComponentActivity() {
     lateinit var connectivityProvider: ConnectivityProvider<GameMessage>
