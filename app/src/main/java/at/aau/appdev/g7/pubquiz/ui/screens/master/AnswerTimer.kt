@@ -3,6 +3,7 @@ package at.aau.appdev.g7.pubquiz.ui.screens.master
 import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.SizeTransform
@@ -172,7 +173,7 @@ fun MasterAnswerTimerScreen(
 }
 
 @OptIn(ExperimentalAnimationApi::class)
-val fabTransitionSpec: AnimatedContentScope<Boolean>.() -> ContentTransform =
+val fabTransitionSpec: AnimatedContentTransitionScope<Boolean>.() -> ContentTransform =
     {
         (scaleIn(
             transformOrigin = TransformOrigin(

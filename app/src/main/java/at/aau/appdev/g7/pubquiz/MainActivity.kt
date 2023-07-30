@@ -7,14 +7,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContentScope
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.with
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +28,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -161,14 +165,15 @@ val BottomDestination.icon
         BottomDestination.Master -> Icons.Filled.Person
     }
 
-@OptIn(ExperimentalAnimationApi::class)
 val customTransitionSpec = NavTransitionSpec<Any?> { action: NavAction, _, _ ->
     val direction = if (action == NavAction.Pop) {
-        AnimatedContentScope.SlideDirection.End
+        AnimatedContentTransitionScope.SlideDirection.End
     } else {
-        AnimatedContentScope.SlideDirection.Start
+        AnimatedContentTransitionScope.SlideDirection.Start
     }
-    slideIntoContainer(direction).with(slideOutOfContainer(direction))
+
+
+    slideIntoContainer(direction).togetherWith(slideOutOfContainer(direction))
 }
 
 @Composable
@@ -198,10 +203,6 @@ private fun NavController<BottomDestination>.moveLastEntryToStart() {
 }
 
 
-@OptIn(
-    ExperimentalAnimationApi::class, ExperimentalAnimationApi::class,
-    ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class
-)
 @Composable
 fun NavHostScreen(
     onUserRoleChosen: (UserRole) -> Game
@@ -328,11 +329,11 @@ fun MasterScreen(
     )
 
     var currentRound by remember {
-        mutableStateOf(0)
+        mutableIntStateOf(0)
     }
 
     var currentQuestion by remember {
-        mutableStateOf(0)
+        mutableIntStateOf(0)
     }
 
     NavBackHandler(controller = masterController)
@@ -490,7 +491,7 @@ fun MasterScreen(
                 showBottomNavigation(false)
                 // TODO we should consider to move timer functionality to the game class
                 var ticks by remember {
-                    mutableStateOf(0)
+                    mutableIntStateOf(0)
                 }
                 val time = configuredGames[destination.gameIndex].timePerQuestion
                 var timerStarted by remember {
@@ -527,7 +528,7 @@ fun MasterScreen(
                 showBottomNavigation(false)
                 // TODO
                 var ticks by remember {
-                    mutableStateOf(0)
+                    mutableIntStateOf(0)
                 }
                 val timeout = configuredGames[destination.gameIndex].timePerQuestion
                 var timerStarted by remember {
