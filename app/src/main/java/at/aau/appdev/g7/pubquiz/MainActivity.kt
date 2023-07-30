@@ -74,7 +74,7 @@ import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
 const val TAG = "PubQuiz"
-const val DEMO_MODE = false
+const val DEMO_MODE = true
 
 class MainActivity : ComponentActivity() {
     lateinit var connectivityProvider: ConnectivityProvider<GameMessage>
