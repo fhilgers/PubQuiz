@@ -3,6 +3,8 @@ name: Push and Release
 on:
   workflow_dispatch:
 
+permissions: read-all
+
 jobs:
   build:
     name: Generate App Bundle
