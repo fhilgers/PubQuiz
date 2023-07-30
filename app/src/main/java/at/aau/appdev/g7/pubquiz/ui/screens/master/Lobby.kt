@@ -28,13 +28,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +49,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import at.aau.appdev.g7.pubquiz.ui.components.PlayerAvatar
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
@@ -53,7 +62,7 @@ data class Player(val name: String, val ready: Boolean) : Parcelable
 fun MasterLobby(
     players: List<Player>,
     password: String,
-    connectionRequests: List<String>,
+    connectionRequests: Flow<String>,
     onClose: () -> Unit,
     onReady: () -> Unit,
     onStart: () -> Unit,
@@ -139,7 +148,38 @@ fun MasterLobby(
         )
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(connectionRequests) {
+        connectionRequests.collect { id ->
+            scope.launch {
+                val res = snackbarHostState.showSnackbar(
+                    message = "Player $id wants to join the lobby",
+                    actionLabel = "Accept",
+                    duration = SnackbarDuration.Indefinite,
+                    withDismissAction = true,
+                )
+
+                when (res) {
+                    SnackbarResult.Dismissed -> {
+                        //TODO cannot reject currently just ignore
+                    }
+                    SnackbarResult.ActionPerformed -> {
+                        onConnectionAccept(id)
+
+                        snackbarHostState.showSnackbar(
+                            message = "Connection $id accepted",
+                            duration = SnackbarDuration.Short,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(title = { Text(text = "Game Lobby") }, navigationIcon = {
                 IconButton(onClick = {
@@ -183,14 +223,6 @@ fun MasterLobby(
                 ) {
                     Text(text = "Game Password")
                     Text(text = password, style = MaterialTheme.typography.displayMedium)
-                }
-            }
-
-            Column{
-                connectionRequests.forEach {
-                    Button(onClick = { onConnectionAccept(it) }) {
-                        Text(text = it)
-                    }
                 }
             }
 
@@ -252,7 +284,7 @@ fun LobbyPreview() {
             onReady = {},
             onStart = {},
             onConnectionAccept = {},
-            connectionRequests = listOf("123", "456")
+            connectionRequests = flowOf()
         )
     }
 }
