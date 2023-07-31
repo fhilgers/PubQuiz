@@ -81,3 +81,47 @@ that is, all screens are implemented as a separate composable components linked 
 * `domain` layer is fully testable using pure unit tests
 * `demo` layer contains pre-programmed mocks of network communication activities to test the application
    flow in "demo"-mode without real connected devices, i.e. in emulator or on a single device. 
+
+### How to try out the App
+
+The file MainActivity.kt contains a variable named `DEMO_MODE` at the top. To try out the
+app in Simulation mode this value has to be `true`, otherwise it should be `false`.
+
+##### Master
+
+After selecting Master in the bottom navigation, create a new game template by
+clicking Setup Game. 
+
+After this is done, click on a newly created game to host it and go to the game lobby.
+
+In the lobby a Toast pops up, every time a new player tries to connect. After all
+players are in the lobby, click on the Get Ready button to notify all players that they
+should ready up. When everyone is ready, start the game.
+
+IMPORTANT: When using simulation Mode, wait for 4 Players to be shown in the lobby for 
+it to work correctly.
+
+Afterwards the gameflow is simple:
+
+    - Start a new Round
+    - Start a new Question
+    - Select the correct answer for the Question
+    - Wait for all players to submit their answers
+    - Repeat
+
+##### Player
+
+After selecting Player in the bottom navigation, search for games by clicking Search Game.
+Click on a discovered host, to connect to it, after this is done, choose a Name for your Team and
+Join the Game.
+When the host notifies you, that the game is starting, confirm the ready check.
+
+Afterwards the gameflow is the inverted gameflow of the master:
+
+    - Wait for a new Round
+    - Wait for a new question
+    - Select you answer for the question
+    - Submit your round
+    - Repeat
+
+IMPORTANT: There is currently no timer in simulation Mode.
