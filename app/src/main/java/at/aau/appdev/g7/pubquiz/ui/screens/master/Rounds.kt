@@ -25,8 +25,6 @@ import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MasterRoundsScreen(
-        //numberOfRounds: Int,
-        //nextRound: Int,
     roundNames: List<String>,
     nextRoundName: String,
     onNextRoundStart: () -> Unit,

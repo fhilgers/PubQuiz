@@ -51,11 +51,13 @@ import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResult
 import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResultAnswer
 import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResultPlayer
 import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResultRound
+import at.aau.appdev.g7.pubquiz.domain.PlayerRoundScoreRecord
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterGameOver
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterLobby
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterQuestionsScreen
+import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterRoundEndScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterRoundsScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterSetup
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterStart
@@ -84,7 +86,7 @@ import kotlinx.parcelize.Parcelize
 import java.lang.RuntimeException
 
 const val TAG = "PubQuiz"
-const val DEMO_MODE = false
+const val DEMO_MODE = true
 
 class MainActivity : ComponentActivity() {
     lateinit var connectivityProvider: ConnectivityProvider<GameMessage>
@@ -349,6 +351,9 @@ fun MasterScreen(
     var playerAnswers by rememberSaveable {
         mutableStateOf(listOf<PlayerAnswer>())
     }
+    var playerRoundAnswers by rememberSaveable {
+        mutableStateOf(listOf<PlayerRoundScoreRecord>())
+    }
 
     val masterController = rememberNavController<MasterDestination>(
         startDestination = MasterDestination.Start
@@ -367,6 +372,7 @@ fun MasterScreen(
         currentQuestion = 0
         players = listOf()
         playerAnswers = listOf()
+        playerRoundAnswers = listOf()
         game.reset()
     }
 
@@ -422,13 +428,7 @@ fun MasterScreen(
                         Log.d(TAG, "MasterScreen: player $p answered: $playerAnswers")
                     }
                     game.onPlayerSubmitRound = { p ->
-                        playerAnswers = playerAnswers.map { item ->
-                            if (item.from == p) {
-                                item.copy(answered = true)
-                            } else {
-                                item
-                            }
-                        }
+                        playerRoundAnswers = game.currentRoundAnswers
                         Log.d(TAG, "MasterScreen: player $p submit round")
                     }
                     game.onNavigateRounds = {roundIndex ->
@@ -522,6 +522,7 @@ fun MasterScreen(
                     roundNames = roundNames,
                     nextRoundName = roundNames[game.currentRoundIdx + 1]
                 ) {
+                    playerRoundAnswers = emptyList()
                     game.startNextRound()
                     masterController.navigate(MasterDestination.Questions(destination.gameIndex))
                 }
@@ -587,10 +588,10 @@ fun MasterScreen(
                 val timer = game.timer.collectAsState(initial = timeout)
                 val timerState = game.timerState.collectAsState()
 
-                MasterAnswerTimerScreen(
-                    title = game.currentRound.name,
+                MasterRoundEndScreen(
+                    roundName = game.currentRound.name,
+                    playerAnswers = playerRoundAnswers,
                     remainingTime = timer.value,
-                    playerAnswers = playerAnswers,
                     timerStarted = timerState.value == Game.TimerState.STARTED,
                     onStartTimer = {
                         when (timerState.value) {
@@ -599,10 +600,10 @@ fun MasterScreen(
                             Game.TimerState.ENDED -> game.startTimer()
                         } },
                     onPauseTimer = { game.pauseTimer() },
-                    onSkipTimer = {
+                    onContinue = {
                         game.skipTimer()
                     }
-                    )
+                )
             }
 
             is MasterDestination.GameOver -> {

@@ -65,6 +65,19 @@ class Game(
     val currentQuestion: Question
         get() = rounds[currentRoundIdx].questions[currentQuestionIdx]
 
+    val currentRoundAnswers: List<PlayerRoundScoreRecord>
+        get() {
+            val roundAnswers = rounds[currentRoundIdx].answers
+            return players.values
+                .filter { player -> player.answersPerRound.size > currentRoundIdx }
+                .map { player ->
+                    val answers = player.answersPerRound[currentRoundIdx]
+                    val score = answers.zip(roundAnswers).count { it.first == it.second }
+                    PlayerRoundScoreRecord(player.name, answers, score)
+                }
+                .sortedByDescending { it.roundScore }
+        }
+
     val hasNextRound: Boolean
         get() = currentRoundIdx < rounds.size - 1
     val hasNextQuestion: Boolean
@@ -743,4 +756,11 @@ data class Player(
     val answersPerRound: MutableList<List<String>> = mutableListOf(),
     var ready: Boolean = false,
     var answered: Boolean = false
+): Parcelable
+
+@Parcelize
+data class PlayerRoundScoreRecord(
+    val player: String,
+    val roundAnswers: List<String>,
+    val roundScore: Int
 ): Parcelable
