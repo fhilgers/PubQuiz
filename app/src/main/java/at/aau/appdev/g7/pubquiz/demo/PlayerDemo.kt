@@ -85,7 +85,8 @@ class PlayerDemoConnectivitySimulator(
                             GameMessage(
                                 QUESTION,
                                 "Question ${simulator.questionIdx}",
-                                listOf("A", "B", "C", "D")
+                                listOf("A", "B", "C", "D"),
+                                60
                             )
                         )
                     }
@@ -106,7 +107,8 @@ class PlayerDemoConnectivitySimulator(
                                 GameMessage(
                                     QUESTION,
                                     "Question ${simulator.questionIdx}",
-                                    listOf("A", "B", "C", "D")
+                                    listOf("A", "B", "C", "D"),
+                                    60
                                 )
                             )
                         }
@@ -132,7 +134,8 @@ class PlayerDemoConnectivitySimulator(
                                 GameMessage(
                                     QUESTION,
                                     "Question ${simulator.questionIdx}",
-                                    listOf("A", "B", "C", "D")
+                                    listOf("A", "B", "C", "D"),
+                                    60
                                 )
                             )
                         }
@@ -140,6 +143,10 @@ class PlayerDemoConnectivitySimulator(
                 }
 
                 GAME_OVER -> {}
+                TIMER_STARTED -> {}
+                TIMER_PAUSED -> {}
+                TIMER_RESUMED -> {}
+                TIMER_ENDED -> {}
             }
         }
         override suspend fun close() {

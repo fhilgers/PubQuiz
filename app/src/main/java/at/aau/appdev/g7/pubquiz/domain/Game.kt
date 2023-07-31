@@ -12,8 +12,15 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolException
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ProtocolMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNot
@@ -70,6 +77,10 @@ class Game(
     var onPlayerReady: (player: String) -> Unit = {}
     var onPlayerAnswer: (player: String) -> Unit = {}
     var onPlayerSubmitRound: (player: String) -> Unit = {}
+    var onNavigateRounds: (roundIndex: Int) -> Unit = {}
+    var onNavigateQuestions: (questionIndex: Int) -> Unit = {}
+    var onNavigateRoundEnd: () -> Unit = {}
+    var onNavigateStart: () -> Unit = {}
 
     // Player UI events
     var onGameStarting: () -> Unit = {}
@@ -142,6 +153,7 @@ class Game(
             }
 
             GameMessageType.ROUND_END -> {
+                _timer.value = currentRound.questions.first().time
                 onRoundEnd.invoke()
             }
 
@@ -153,9 +165,11 @@ class Game(
                     Question(
                         currentQuestionIdx,
                         message.name!!,
-                        message.answers!!
+                        message.answers!!,
+                        message.time!!
                     )
                 )
+                _timer.value = message.time
                 currentRound.answers.add("")
                 onNewQuestion.invoke()
             }
@@ -179,6 +193,55 @@ class Game(
                 phase = END
                 onGameOver.invoke()
             }
+
+            GameMessageType.TIMER_STARTED -> {
+                expectRole(PLAYER, "timer started")
+                expectTimer(TimerState.ENDED, "timer started")
+
+                timerJob = CoroutineScope(Dispatchers.Main).launch {
+                    for (i in message.time!! downTo 0) {
+                        _timer.emit(i)
+
+                        delay(1000)
+                    }
+                }
+
+                _timerState.value = TimerState.STARTED
+            }
+
+            GameMessageType.TIMER_PAUSED -> {
+                expectRole(PLAYER, "timer paused")
+                expectTimer(TimerState.STARTED, "timer paused")
+
+                timerJob?.cancel()
+
+                _timerState.value = TimerState.PAUSED
+                _timer.value = message.time!!
+            }
+
+            GameMessageType.TIMER_RESUMED -> {
+                expectRole(PLAYER, "timer resumed")
+                expectTimer(TimerState.PAUSED, "timer resumed")
+
+                timerJob = CoroutineScope(Dispatchers.Main).launch {
+                    for (i in message.time!! downTo 0) {
+                        _timer.emit(i)
+
+                        delay(1000)
+                    }
+                }
+
+                _timerState.value = TimerState.STARTED
+            }
+
+            GameMessageType.TIMER_ENDED -> {
+                expectRole(PLAYER, "timer ended")
+                expectTimer(TimerState.STARTED, "timer ended")
+
+                timerJob?.cancel()
+
+                _timerState.value = TimerState.ENDED
+            }
         }
     }
 
@@ -191,13 +254,14 @@ class Game(
         currentRoundIdx = -1
         currentQuestionIdx = -1
         players.clear()
+        connections.clear()
         connectionScope.cancel()
     }
 
     /**
      * 1. As a Master, I can set up a new pub quiz session
      */
-    fun setupGame(numberOfRounds: Int, questionsPerRound: Int, answersPerQuestion: Int) {
+    fun setupGame(numberOfRounds: Int, questionsPerRound: Int, answersPerQuestion: Int, timePerQuestion: Int) {
         expectRole(MASTER, "setup game")
         expectPhase(INIT, "setup game")
 
@@ -205,7 +269,7 @@ class Game(
             val questions = (1..questionsPerRound).map { q ->
                 val answers = 'A'.rangeTo('A'.plus(answersPerQuestion - 1))
                     .map { a -> "$a" }.toList()
-                Question(q, "Question $q", answers)
+                Question(q, "Question $q", answers, timePerQuestion)
             }.toMutableList()
             Round(r, "Round $r", questions)
         }.toMutableList()
@@ -213,7 +277,7 @@ class Game(
     }
 
     fun setupGame(configuration: GameConfiguration) {
-        setupGame(configuration.numberOfRounds, configuration.numberOfQuestions, configuration.numberOfAnswers)
+        setupGame(configuration.numberOfRounds, configuration.numberOfQuestions, configuration.numberOfAnswers, configuration.timePerQuestion)
     }
 
     // TODO add overloaded setup() for import use case as soon as it will be needed
@@ -337,21 +401,23 @@ class Game(
         expectRole(MASTER, "end round")
         // TODO check phase
 
+        _timer.value = rounds[currentRoundIdx].questions[currentQuestionIdx].time
+
         broadcast(GameMessage(GameMessageType.ROUND_END))
 
         phase = ROUND_ENDED
+
+        startTimer()
     }
 
     fun startNextQuestion() {
         expect(MASTER, anyOf(ROUND_STARTED, QUESTION_ANSWERED), "start next question")
 
         currentQuestionIdx++
-        val question = currentQuestion
 
         players.forEach { it.value.answered = false }
-        broadcast(GameMessage(GameMessageType.QUESTION, question.text, question.answers))
 
-        phase = QUESTION_ACTIVE
+        _timer.value = rounds[currentRoundIdx].questions[currentQuestionIdx].time
     }
 
     /**
@@ -401,7 +467,96 @@ class Game(
 
         rounds[currentRoundIdx].answers[currentQuestionIdx] = answer
 
-        // phase is not changed!
+        // phase is changed!
+        val question = currentQuestion
+        broadcast(GameMessage(GameMessageType.QUESTION, question.text, question.answers, question.time))
+
+        phase = QUESTION_ACTIVE
+
+        startTimer()
+    }
+
+    private var _timer = MutableStateFlow(-1)
+    var timer = _timer.asStateFlow()
+    private var timerJob: Job? = null
+    private var _timerState = MutableStateFlow(TimerState.ENDED)
+    var timerState = _timerState.asStateFlow()
+
+    enum class TimerState {
+        STARTED, PAUSED, ENDED
+    }
+
+
+    fun startTimer() {
+        expectRole(MASTER, "start timer")
+        expectTimer(TimerState.ENDED, "start timer")
+
+        val question = currentQuestion
+
+        timerJob = CoroutineScope(Dispatchers.Main).launch {
+            try {
+                for (i in question.time downTo 0) {
+                    // blocks until paused == false
+                    timerState.first { it == TimerState.STARTED }
+
+                    _timer.emit(i)
+                    delay(1000)
+                }
+            } finally {
+                _timerState.value = TimerState.ENDED
+
+                broadcast(GameMessage(GameMessageType.TIMER_ENDED, "", null, timer.value))
+
+                if (phase == ROUND_ENDED) {
+                    if (currentRoundIdx == rounds.size - 1) {
+                        endGame()
+                        onNavigateStart()
+                    } else {
+                        onNavigateRounds(currentRoundIdx + 1)
+                    }
+                } else {
+                    if (currentQuestionIdx == currentRound.questions.size - 1) {
+                        endRound()
+                        onNavigateRoundEnd()
+                    } else {
+                        onNavigateQuestions(currentQuestionIdx + 1)
+                    }
+                }
+            }
+        }
+
+
+        broadcast(GameMessage(GameMessageType.TIMER_STARTED, "", null, timer.value))
+
+        _timerState.value = TimerState.STARTED
+    }
+
+    fun pauseTimer() {
+        expectRole(MASTER,"pause timer")
+        expectTimer(TimerState.STARTED, "pause timer")
+
+        _timerState.value = TimerState.PAUSED
+
+        broadcast(GameMessage(GameMessageType.TIMER_PAUSED, "", null, timer.value))
+    }
+
+    fun resumeTimer() {
+        expectRole(MASTER,"resume timer")
+        expectTimer(TimerState.PAUSED, "resume timer")
+
+
+        broadcast(GameMessage(GameMessageType.TIMER_RESUMED, "", null, timer.value))
+
+        _timerState.value = TimerState.STARTED
+    }
+
+    fun skipTimer() {
+        expectRole(MASTER, "skip timer")
+        expectTimer(anyOf(TimerState.STARTED, TimerState.PAUSED), "skip timer")
+
+        timerJob?.cancel()
+
+        _timerState.value = TimerState.ENDED
     }
 
     /**
@@ -435,14 +590,26 @@ class Game(
         }
     }
 
+    private fun expectTimer(expectedState: TimerState, action: String) {
+        if (expectedState != timerState.value) {
+            throw IllegalStateException("Invalid timer state (${timerState.value}) to $action")
+        }
+    }
+
+    private fun expectTimer(expectedStates: EnumSet<TimerState>, action: String) {
+        if (!expectedStates.contains(timerState.value)) {
+            throw IllegalStateException("Invalid timer state (${timerState.value}) to $action")
+        }
+    }
+
     private fun expectPhase(expectedPhases: EnumSet<GamePhase>, action: String) {
         if (!expectedPhases.contains(phase)) {
             throw IllegalStateException("Invalid game phase ($phase) to proceed with $action")
         }
     }
 
-    private fun anyOf(vararg phases: GamePhase): EnumSet<GamePhase> {
-        val set = EnumSet.noneOf(GamePhase::class.java)
+    private inline fun <reified T: Enum<T>> anyOf(vararg phases: T): EnumSet<T> {
+        val set = EnumSet.noneOf(T::class.java)
         phases.forEach { set.add(it) }
         return set
     }
@@ -483,7 +650,8 @@ enum class GamePhase {
 data class GameMessage(
     val type: GameMessageType,
     val name: String? = null,
-    val answers: List<String>? = null
+    val answers: List<String>? = null,
+    val time: Int? = null
 ) : ProtocolMessage, Parcelable
 
 enum class GameMessageType {
@@ -494,7 +662,11 @@ enum class GameMessageType {
     QUESTION,
     ANSWER,
     SUBMIT_ROUND,
-    GAME_OVER
+    GAME_OVER,
+    TIMER_STARTED,
+    TIMER_PAUSED,
+    TIMER_RESUMED,
+    TIMER_ENDED,
 }
 
 class GameProtocol : ConnectivityProtocol<GameMessage> {
@@ -503,7 +675,7 @@ class GameProtocol : ConnectivityProtocol<GameMessage> {
     }
 
     override fun serialize(data: GameMessage): String {
-        var s = data.type.toString() + SEPARATOR + data.name
+        var s = data.type.toString() + SEPARATOR + data.name + SEPARATOR + data.time.toString()
         data.answers?.forEach { s += SEPARATOR + it }
         return s
     }
@@ -522,20 +694,27 @@ class GameProtocol : ConnectivityProtocol<GameMessage> {
             GameMessageType.QUESTION -> GameMessage(
                 type,
                 elements[1],
-                elements.subList(2, elements.size)
+                elements.subList(3, elements.size),
+                elements[2].toInt()
             )
 
             GameMessageType.ANSWER -> GameMessage(type, elements[1])
             GameMessageType.SUBMIT_ROUND -> GameMessage(
                 type,
                 elements[1],
-                elements.subList(2, elements.size)
+                elements.subList(3, elements.size)
             )
+
+            GameMessageType.TIMER_STARTED -> GameMessage(type, null, null, elements[2].toInt())
+            GameMessageType.TIMER_ENDED -> GameMessage(type, null, null, elements[2].toInt())
+            GameMessageType.TIMER_PAUSED -> GameMessage(type, null, null, elements[2].toInt())
+            GameMessageType.TIMER_RESUMED -> GameMessage(type, null, null, elements[2].toInt())
 
             else -> GameMessage(
                 type = type,
                 name = if (elements.size > 1) elements[1] else null,
-                answers = if (elements.size > 2) elements.subList(2, elements.size) else null
+                answers = if (elements.size > 3) elements.subList(3, elements.size) else null,
+                time = null
             )
         }
     }
@@ -553,7 +732,8 @@ data class Round(
 data class Question(
     val index: Int,
     val text: String,
-    val answers: List<String>
+    val answers: List<String>,
+    val time: Int
 ): Parcelable
 
 @Parcelize
