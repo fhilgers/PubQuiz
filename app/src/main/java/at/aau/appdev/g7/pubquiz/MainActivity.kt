@@ -501,6 +501,7 @@ fun MasterScreen(
                     roundNames = roundNames,
                     nextRoundName = roundNames[game.currentRoundIdx + 1]
                 ) {
+                    playerRoundAnswers = emptyList()
                     game.startNextRound()
                     masterController.navigate(MasterDestination.Questions(destination.gameIndex))
                 }
@@ -568,15 +569,8 @@ fun MasterScreen(
 
                 MasterRoundEndScreen(
                     roundName = game.currentRound.name,
-                    playerAnswers = playerRoundAnswers
-                ) {
-
-                }
-
-                MasterAnswerTimerScreen(
-                    title = game.currentRound.name,
+                    playerAnswers = playerRoundAnswers,
                     remainingTime = timer.value,
-                    playerAnswers = playerAnswers,
                     timerStarted = timerState.value == Game.TimerState.STARTED,
                     onStartTimer = {
                         when (timerState.value) {
@@ -585,10 +579,27 @@ fun MasterScreen(
                             Game.TimerState.ENDED -> game.startTimer()
                         } },
                     onPauseTimer = { game.pauseTimer() },
-                    onSkipTimer = {
+                    onContinue = {
                         game.skipTimer()
                     }
-                    )
+                )
+
+//                MasterAnswerTimerScreen(
+//                    title = game.currentRound.name,
+//                    remainingTime = timer.value,
+//                    playerAnswers = playerAnswers,
+//                    timerStarted = timerState.value == Game.TimerState.STARTED,
+//                    onStartTimer = {
+//                        when (timerState.value) {
+//                            Game.TimerState.STARTED -> {}
+//                            Game.TimerState.PAUSED -> game.resumeTimer()
+//                            Game.TimerState.ENDED -> game.startTimer()
+//                        } },
+//                    onPauseTimer = { game.pauseTimer() },
+//                    onSkipTimer = {
+//                        game.skipTimer()
+//                    }
+//                    )
             }
         }
     }
