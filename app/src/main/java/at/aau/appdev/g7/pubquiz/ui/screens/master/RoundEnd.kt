@@ -1,5 +1,7 @@
 package at.aau.appdev.g7.pubquiz.ui.screens.master
 
+import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,7 @@ import at.aau.appdev.g7.pubquiz.ui.components.PlayerAvatar
 fun MasterRoundEndScreen(
     roundName: String,
     playerAnswers: List<PlayerRoundScoreRecord>,
+    canContinue: Boolean,
     remainingTime: Int,
     timerStarted: Boolean,
     onStartTimer: () -> Unit,
@@ -52,8 +55,10 @@ fun MasterRoundEndScreen(
     Scaffold(
             floatingActionButtonPosition = FabPosition.End,
             floatingActionButton = {
-                ExtendedFloatingActionButton(onClick = onContinue) {
-                    Text(text = "Continue")
+                if(canContinue) {
+                    ExtendedFloatingActionButton(onClick = onContinue) {
+                        Text(text = "Continue")
+                    }
                 }
             },
         topBar = {
@@ -135,6 +140,7 @@ fun MasterRoundEndScreenPreview() {
         remainingTime = 30,
         timerStarted = true,
         onStartTimer = {},
+        canContinue = true,
         onPauseTimer = {},
     )
 }

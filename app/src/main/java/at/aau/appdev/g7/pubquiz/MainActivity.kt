@@ -1,5 +1,6 @@
 package at.aau.appdev.g7.pubquiz
 
+import android.nfc.Tag
 import android.os.Bundle
 import android.os.Parcelable
 import android.util.Log
@@ -600,6 +601,7 @@ fun MasterScreen(
                             Game.TimerState.ENDED -> game.startTimer()
                         } },
                     onPauseTimer = { game.pauseTimer() },
+                    canContinue = playerRoundAnswers.size == players.size,
                     onContinue = {
                         game.skipTimer()
                     }
