@@ -81,6 +81,7 @@ class Game(
     var onNavigateQuestions: (questionIndex: Int) -> Unit = {}
     var onNavigateRoundEnd: () -> Unit = {}
     var onNavigateStart: () -> Unit = {}
+    var onNavigateGameOver: (rounds: List<Round>, players: List<Player>) -> Unit = { _, _ -> }
 
     // Player UI events
     var onGameStarting: () -> Unit = {}
@@ -510,7 +511,7 @@ class Game(
                 if (phase == ROUND_ENDED) {
                     if (currentRoundIdx == rounds.size - 1) {
                         endGame()
-                        onNavigateStart()
+                        onNavigateGameOver(rounds, players.values.toList())
                     } else {
                         onNavigateRounds(currentRoundIdx + 1)
                     }
