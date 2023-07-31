@@ -4,7 +4,6 @@ Project in 623.952 (23S) App Development at AAU Klagenfurt
 By Group 7:
 * Hilgers Felix
 * Ismailov Ramiz
-* Kössler Günther
 
 
 ## Requirements
@@ -59,3 +58,26 @@ Player - a team of players who take part in the game night pub quiz.
 * Game setup can be extended to support labeled answers (1) which can be also displayed on user screen (11)
 * Number of questions per round can be adjusted on the round start screen (8)
 * Number of answers per question can be adjusted on the question start screen (10)
+
+## Architecture & Design
+
+In this project we use simplified [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) approach.
+That is, we the following layers:
+* `domain` layer, which is platform- and framework-independent. It has no dependencies on any other layer.
+* `providers` layer, which implements data, connectivity and other platform-specific services. 
+   It has no dependencies on other layers but `domain` layer.
+* `UI` layer, which implements user interface. It has dependencies on `domain` and `providers` layers.
+* `MainActivity` is the entry point of the application and special layer that integrates other layers.
+
+The application is based on Single Activity Architecture,
+that is, all screens are implemented as a separate composable components linked together using Navigation.
+
+### Technology Stack
+* UI is based on the [Jetpack Compose](https://developer.android.com/jetpack/compose) framework
+* Persistence is based on the [Room](https://developer.android.com/jetpack/androidx/releases/room) library
+* Connectivity is based on the [Nearby Connections](https://developers.google.com/nearby/connections) service
+
+### Testability
+* `domain` layer is fully testable using pure unit tests
+* `demo` layer contains pre-programmed mocks of network communication activities to test the application
+   flow in "demo"-mode without real connected devices, i.e. in emulator or on a single device. 
