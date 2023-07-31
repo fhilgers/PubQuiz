@@ -37,6 +37,7 @@ import at.aau.appdev.g7.pubquiz.ui.components.AnswerButton
 fun PlayerQuestions(
     questionText: String,
     answers: List<String>,
+    time: Int,
     selectedAnswer: String,
     onAnswer: (String) -> Unit
 ) {
@@ -51,6 +52,9 @@ fun PlayerQuestions(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(40.dp, Alignment.CenterVertically)
         ) {
+
+            Text(text = "$time", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+
             for (answer in answers) {
                 AnswerButton(
                     modifier = Modifier
@@ -71,6 +75,7 @@ fun PlayerQuestionsPreview() {
     PlayerQuestions(
         questionText = "Question 1",
         answers = listOf("A", "B", "C", "D"),
+        time = 60,
         "B",
         onAnswer = {}
     )

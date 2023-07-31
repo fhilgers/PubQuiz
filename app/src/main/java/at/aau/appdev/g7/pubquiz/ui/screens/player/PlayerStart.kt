@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 fun PlayerStart(
     connected: Boolean = false,
     searching: Boolean = false,
+    connecting: Boolean = false,
     spacing: Dp = 40.dp,
     onSearchGame: () -> Unit = {},
     onJoinGame: (name:String) -> Unit = {},
@@ -51,15 +52,18 @@ fun PlayerStart(
                 Text("Join Game")
             }
         } else if (searching) {
-            Text(text = "Searching for games...")
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Column() {
                 endpoints.forEach {
                     Button(onClick = { onConnectGame(it) }) {
                         Text(text = it)
                     }
                 }
             }
+
+            Text(text = "Searching for games...")
+        } else if (connecting) {
+            Text(text = "Connecting to server...")
         }
         else {
             Button(onClick = onSearchGame) {

@@ -157,7 +157,7 @@ class GameTest {
     @Test
     fun simpleSimulation() = runBlocking {
         // 1
-        master.setupGame(2, 3, 4)
+        master.setupGame(2, 3, 4, 15)
         assertEquals(2, master.roundNames.size)
 
         master.createGame()
@@ -229,6 +229,9 @@ class GameTest {
                 // 10
                 master.startNextQuestion()
 
+                //13
+                master.selectCorrectAnswer(master.currentQuestion.answers.random())
+
                 // 11
                 assertTrue(players.all { it.phase == GamePhase.QUESTION_ACTIVE })
                 assertEquals(GamePhase.QUESTION_ACTIVE, master.phase)
@@ -236,8 +239,6 @@ class GameTest {
                 // 12
                 players.forEach { p -> p.answerQuestion(p.currentQuestion.answers.random()) }
 
-                //13
-                master.selectCorrectAnswer(master.currentQuestion.answers.random())
                 // TODO master.players.forEach { i,p -> p }
             }
 

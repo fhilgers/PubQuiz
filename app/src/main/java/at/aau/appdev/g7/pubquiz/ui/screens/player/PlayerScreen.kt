@@ -24,6 +24,8 @@ import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.navigate
 import dev.olshevski.navigation.reimagined.rememberNavController
 import dev.olshevski.navigation.reimagined.replaceAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -44,6 +46,9 @@ fun PlayerScreen(
         mutableStateOf(false)
     }
     var searching by remember {
+        mutableStateOf(false)
+    }
+    var connecting by remember {
         mutableStateOf(false)
     }
 
@@ -96,6 +101,7 @@ fun PlayerScreen(
         )
     }
 
+    val time = game.timer.collectAsState()
 
     AnimatedNavHost(controller = playerController, transitionSpec = customTransitionSpec) { destination ->
         when(destination) {
@@ -104,6 +110,7 @@ fun PlayerScreen(
                 PlayerStart(
                     connected = connected,
                     searching = searching,
+                    connecting = connecting,
                     endpoints = endpoints.value.toList(),
                     onSearchGame = {
                         game.searchGame()
@@ -114,10 +121,12 @@ fun PlayerScreen(
                         Log.d(TAG, "PlayerDestination.Start: onConnectGame: endpoint=$endpoint")
                         composableScope.launch {
                             game.connectToGame(endpoint)
-                            Log.d(TAG, "PlayerDestination.Start: connected endpoint=$endpoint")
+                            connecting = false
                             connected = true
-                            searching = false
+                            Log.d(TAG, "PlayerDestination.Start: connected endpoint=$endpoint")
                         }
+                        searching = false
+                        connecting = true
                     },
                     onJoinGame = { name ->
                         game.joinGameAs(name)
@@ -166,6 +175,7 @@ fun PlayerScreen(
                     questionText = game.currentQuestion.text,
                     answers = game.currentQuestion.answers,
                     selectedAnswer = selectedAnswers[index],
+                    time = time.value,
                     onAnswer = { answer ->
                         game.answerQuestion(answer)
                         selectedAnswers = game.currentRound.answers.toList()
@@ -182,7 +192,8 @@ fun PlayerScreen(
                     onAnswerChanged = { index, answer ->
                         game.answerQuestion(answer, index)
                         selectedAnswers = game.currentRound.answers.toList()
-                    }
+                    },
+                    time = time.value,
                 ) {
                     game.submitRoundAnswers()
                     roundSubmitted = true
