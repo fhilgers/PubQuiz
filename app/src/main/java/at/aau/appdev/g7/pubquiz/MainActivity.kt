@@ -46,9 +46,15 @@ import at.aau.appdev.g7.pubquiz.providers.NearbyConnectivityProvider
 import at.aau.appdev.g7.pubquiz.providers.nearbyProviderPermissions
 import at.aau.appdev.g7.pubquiz.providers.persistence.PersistenceDataProvider
 import at.aau.appdev.g7.pubquiz.domain.GameConfiguration
+import at.aau.appdev.g7.pubquiz.domain.Round
+import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResult
+import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResultAnswer
+import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResultPlayer
+import at.aau.appdev.g7.pubquiz.ui.screens.master.GameResultRound
 import at.aau.appdev.g7.pubquiz.domain.PlayerRoundScoreRecord
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswerTimerScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterAnswersScreen
+import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterGameOver
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterLobby
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterQuestionsScreen
 import at.aau.appdev.g7.pubquiz.ui.screens.master.MasterRoundEndScreen
@@ -153,6 +159,9 @@ sealed class MasterDestination : Parcelable {
 
     @Parcelize
     data class RoundEnd(val gameIndex: Int) : MasterDestination()
+
+    @Parcelize
+    data class GameOver(val rounds: List<Round>, val players: List<at.aau.appdev.g7.pubquiz.domain.Player>) : MasterDestination()
 }
 
 sealed class PlayerDestination : Parcelable {
@@ -358,6 +367,15 @@ fun MasterScreen(
         mutableIntStateOf(0)
     }
 
+    val reset: () -> Unit = {
+        currentRound = 0
+        currentQuestion = 0
+        players = listOf()
+        playerAnswers = listOf()
+        playerRoundAnswers = listOf()
+        game.reset()
+    }
+
     NavBackHandler(controller = masterController)
 
     AnimatedNavHost(masterController, transitionSpec = customTransitionSpec) { destination ->
@@ -429,6 +447,9 @@ fun MasterScreen(
                     game.onNavigateStart = {
                         masterController.popUpTo { destination -> destination == MasterDestination.Start }
                     }
+                    game.onNavigateGameOver = { rounds, players ->
+                        masterController.navigate(MasterDestination.GameOver(rounds, players))
+                    }
                     masterController.navigate(MasterDestination.Lobby(it))
                 })
             }
@@ -472,7 +493,7 @@ fun MasterScreen(
                     players = players,
                     password = "456048",
                     onClose = {
-                        game.reset()
+                        reset()
                         masterController.popUpTo { it == MasterDestination.Start }
                     },
                     onReady = {
@@ -583,23 +604,41 @@ fun MasterScreen(
                         game.skipTimer()
                     }
                 )
+            }
 
-//                MasterAnswerTimerScreen(
-//                    title = game.currentRound.name,
-//                    remainingTime = timer.value,
-//                    playerAnswers = playerAnswers,
-//                    timerStarted = timerState.value == Game.TimerState.STARTED,
-//                    onStartTimer = {
-//                        when (timerState.value) {
-//                            Game.TimerState.STARTED -> {}
-//                            Game.TimerState.PAUSED -> game.resumeTimer()
-//                            Game.TimerState.ENDED -> game.startTimer()
-//                        } },
-//                    onPauseTimer = { game.pauseTimer() },
-//                    onSkipTimer = {
-//                        game.skipTimer()
-//                    }
-//                    )
+            is MasterDestination.GameOver -> {
+                showBottomNavigation(false)
+
+                val resultPlayers = destination.players.map {player ->
+                    val resultRounds = player.answersPerRound.mapIndexed { roundIndex, answers ->
+                        val resultAnswers = answers.mapIndexed { questionIndex, answer ->
+                            GameResultAnswer(
+                                answer = answer,
+                                correct = destination.rounds[roundIndex].answers[questionIndex] == answer
+                            )
+                        }
+
+                        GameResultRound(
+                            answers = resultAnswers
+                        )
+                    }
+
+                    GameResultPlayer(
+                        name = player.name,
+                        rounds = resultRounds
+                    )
+                }
+                val result = GameResult(
+                    players = resultPlayers
+                )
+
+                MasterGameOver(
+                    result = result,
+                    onExit = {
+                        reset()
+                        masterController.popUpTo { it == MasterDestination.Start }
+                    }
+                )
             }
         }
     }
