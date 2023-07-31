@@ -1,5 +1,6 @@
 package at.aau.appdev.g7.pubquiz.ui.screens.master
 
+import android.os.Parcelable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,14 +20,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import at.aau.appdev.g7.pubquiz.domain.PlayerRoundScoreRecord
 import at.aau.appdev.g7.pubquiz.ui.components.HandleUnimplementedBackNavigation
 import at.aau.appdev.g7.pubquiz.ui.theme.PubQuizTheme
+import kotlinx.parcelize.Parcelize
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MasterRoundEndScreen(
     roundName: String,
-    onNextRoundStart: () -> Unit,
+    playerAnswers: List<PlayerRoundScoreRecord>,
+    onContinue: () -> Unit,
 ) {
     HandleUnimplementedBackNavigation()
     val selectedCardColors = CardDefaults.cardColors(
@@ -36,8 +42,8 @@ fun MasterRoundEndScreen(
     Scaffold(
             floatingActionButtonPosition = FabPosition.End,
             floatingActionButton = {
-                ExtendedFloatingActionButton(onClick = onNextRoundStart) {
-                    Text(text = "Start")
+                ExtendedFloatingActionButton(onClick = onContinue) {
+                    Text(text = "Continue")
                 }
             },
         topBar = {
@@ -48,31 +54,24 @@ fun MasterRoundEndScreen(
                 contentPadding = PaddingValues(16.dp),
                 modifier = Modifier.padding(paddingValues)
         ) {
-            items(roundNames.size) {
-                val name = roundNames[it]
-                Card(
-                        modifier = Modifier.padding(vertical = 10.dp),
-                        colors = if (name == nextRoundName) selectedCardColors else CardDefaults.cardColors()
-                )
-                {
-                    Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp)
-                    ) {
-                        Text(text = name, style = MaterialTheme.typography.headlineSmall)
-                    }
-                }
-            }
+//            items(roundNames.size) {
+//                val name = roundNames[it]
+//                Card(
+//                        modifier = Modifier.padding(vertical = 10.dp),
+//                        colors = if (name == nextRoundName) selectedCardColors else CardDefaults.cardColors()
+//                )
+//                {
+//                    Row(
+//                            horizontalArrangement = Arrangement.Center,
+//                            modifier = Modifier
+//                                    .fillMaxWidth()
+//                                    .padding(32.dp)
+//                    ) {
+//                        Text(text = name, style = MaterialTheme.typography.headlineSmall)
+//                    }
+//                }
+//            }
         }
     }
 }
 
-@Preview
-@Composable
-fun MasterRoundsScreenPreview() {
-    PubQuizTheme {
-        MasterRoundsScreen(listOf("Round 1", "Round 2", "Round 3"), nextRoundName = "Round 2", onNextRoundStart = {})
-    }
-}

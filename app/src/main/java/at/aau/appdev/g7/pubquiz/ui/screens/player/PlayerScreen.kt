@@ -20,13 +20,10 @@ import at.aau.appdev.g7.pubquiz.PlayerDestination
 import at.aau.appdev.g7.pubquiz.TAG
 import at.aau.appdev.g7.pubquiz.customTransitionSpec
 import at.aau.appdev.g7.pubquiz.domain.Game
-import at.aau.appdev.g7.pubquiz.domain.GamePhase
 import dev.olshevski.navigation.reimagined.AnimatedNavHost
 import dev.olshevski.navigation.reimagined.navigate
-import dev.olshevski.navigation.reimagined.popUpTo
 import dev.olshevski.navigation.reimagined.rememberNavController
 import dev.olshevski.navigation.reimagined.replaceAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -114,8 +111,10 @@ fun PlayerScreen(
                         searching = true
                     },
                     onConnectGame = { endpoint ->
+                        Log.d(TAG, "PlayerDestination.Start: onConnectGame: endpoint=$endpoint")
                         composableScope.launch {
                             game.connectToGame(endpoint)
+                            Log.d(TAG, "PlayerDestination.Start: connected endpoint=$endpoint")
                             connected = true
                             searching = false
                         }

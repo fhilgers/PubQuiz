@@ -122,7 +122,7 @@ class TestDataProvider : DataProvider {
 
     }
 
-    override fun getGameConfigurations(): List<GameConfiguration> {
+    override suspend fun getGameConfigurations(): List<GameConfiguration> {
         return listOf()
     }
 
