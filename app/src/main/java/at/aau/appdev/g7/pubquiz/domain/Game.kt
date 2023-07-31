@@ -254,6 +254,7 @@ class Game(
         currentRoundIdx = -1
         currentQuestionIdx = -1
         players.clear()
+        connections.clear()
         connectionScope.cancel()
     }
 
@@ -405,6 +406,8 @@ class Game(
         broadcast(GameMessage(GameMessageType.ROUND_END))
 
         phase = ROUND_ENDED
+
+        startTimer()
     }
 
     fun startNextQuestion() {
@@ -469,6 +472,8 @@ class Game(
         broadcast(GameMessage(GameMessageType.QUESTION, question.text, question.answers, question.time))
 
         phase = QUESTION_ACTIVE
+
+        startTimer()
     }
 
     private var _timer = MutableStateFlow(-1)
