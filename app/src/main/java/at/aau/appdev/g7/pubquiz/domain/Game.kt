@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.parcelize.Parcelize
+import java.util.Collections
 import java.util.EnumSet
 
 class Game(
@@ -46,7 +47,7 @@ class Game(
 
     lateinit var playerName: String
 
-    val players = mutableMapOf<String, Player>()
+    val players = Collections.synchronizedMap(mutableMapOf<String, Player>())
 
     val endpoints = connectivityProvider.discoveredEndpoints
 
@@ -212,7 +213,7 @@ class Game(
                 expectRole(PLAYER, "timer started")
                 expectTimer(TimerState.ENDED, "timer started")
 
-                timerJob = CoroutineScope(Dispatchers.Main).launch {
+                timerJob = CoroutineScope(Dispatchers.Default).launch {
                     for (i in message.time!! downTo 0) {
                         _timer.emit(i)
 
@@ -237,7 +238,7 @@ class Game(
                 expectRole(PLAYER, "timer resumed")
                 expectTimer(TimerState.PAUSED, "timer resumed")
 
-                timerJob = CoroutineScope(Dispatchers.Main).launch {
+                timerJob = CoroutineScope(Dispatchers.Default).launch {
                     for (i in message.time!! downTo 0) {
                         _timer.emit(i)
 
@@ -507,7 +508,7 @@ class Game(
 
         val question = currentQuestion
 
-        timerJob = CoroutineScope(Dispatchers.Main).launch {
+        timerJob = CoroutineScope(Dispatchers.Default).launch {
             try {
                 for (i in question.time downTo 0) {
                     // blocks until paused == false

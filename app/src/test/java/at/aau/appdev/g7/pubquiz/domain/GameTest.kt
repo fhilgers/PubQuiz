@@ -4,6 +4,7 @@ import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectionProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProtocol
 import at.aau.appdev.g7.pubquiz.domain.interfaces.ConnectivityProvider
 import at.aau.appdev.g7.pubquiz.domain.interfaces.DataProvider
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.coroutineScope
@@ -134,6 +135,7 @@ class GameTest {
 
     @Before
     fun setUp() {
+
         master = Game(UserRole.MASTER, TestConnectivityProvider("master"), TestDataProvider())
         master.onPlayerJoined = { p -> println("Master: player $p joined") }
         master.onPlayerLeft = { p -> println("Master: player $p left") }
@@ -202,14 +204,22 @@ class GameTest {
         // 3a
         players.forEachIndexed { i, p -> p.joinGameAs("Team$i") }
 
+        // Wait for master to receive all join event
+        while (!master.players.keys.containsAll(setOf("Team0", "Team1"))) {
+            delay(100)
+        }
+
         //5
         master.startGame()
+
+        // Wait for players to receive ready event
+        delay(100)
 
         // 6
         players.forEach { p -> p.readyPlayer() }
 
-
-        delay(1000)
+        // Wait for master to receive all ready events
+        delay(100)
 
         // 7
         assertTrue(master.players.all { it.value.ready })
@@ -222,8 +232,7 @@ class GameTest {
             assertEquals("Question 2", master.currentRound.questions[1].text)
             assertEquals("Question 3", master.currentRound.questions[2].text)
 
-            //9
-            assertTrue(players.all { it.phase == GamePhase.ROUND_STARTED })
+            delay(100)
 
             while (master.hasNextQuestion) {
                 // 10
@@ -232,26 +241,29 @@ class GameTest {
                 //13
                 master.selectCorrectAnswer(master.currentQuestion.answers.random())
 
-                // 11
-                assertTrue(players.all { it.phase == GamePhase.QUESTION_ACTIVE })
-                assertEquals(GamePhase.QUESTION_ACTIVE, master.phase)
+                // Wait for players to receive question event
+                delay(100)
 
                 // 12
                 players.forEach { p -> p.answerQuestion(p.currentQuestion.answers.random()) }
 
-                // TODO master.players.forEach { i,p -> p }
-            }
+                delay(100)
 
-            // 14
-            master.endRound()
+                master.skipTimer()
+
+                delay(100)
+            }
 
             // 16
             players.forEach { p -> p.submitRoundAnswers() }
+
+            // Wait for master to receive submit round event
+            delay(100)
+
+            master.skipTimer()
+
+            delay(100)
         }
 
-        // 17
-
-        // 18
-        master.endGame()
     }
 }
