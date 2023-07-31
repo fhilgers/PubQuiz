@@ -250,7 +250,7 @@ class Game(
 
             GameMessageType.TIMER_ENDED -> {
                 expectRole(PLAYER, "timer ended")
-                expectTimer(TimerState.STARTED, "timer ended")
+                expectTimer(anyOf(TimerState.STARTED, TimerState.PAUSED), "timer ended")
 
                 timerJob?.cancel()
 
